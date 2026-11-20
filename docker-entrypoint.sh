@@ -32,7 +32,9 @@ echo "[Entrypoint] Collecting static files..."
 python manage.py collectstatic --noinput
 
 if [ "${SEED_ON_START:-false}" = "true" ]; then
-    echo "[Entrypoint] SEED_ON_START is true. Seeding benchmark master data..."
+    echo "[Entrypoint] SEED_ON_START is true. Creating benchmark demo users..."
+    python manage.py create_demo_users
+    echo "[Entrypoint] Seeding benchmark master data..."
     python manage.py seed_benchmark
 fi
 

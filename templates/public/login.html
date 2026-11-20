@@ -63,6 +63,7 @@
       </button>
     </form>
 
+    {% if demo_mode %}
     <div class="mt-6 pt-5 border-t border-line">
       <h2 class="text-xs font-mono font-semibold text-ink-muted uppercase tracking-wider mb-2">Role Test Logins</h2>
       <div class="text-xs font-mono space-y-1 text-ink-muted bg-surface-2 p-3 rounded-lg border border-line/60">
@@ -73,6 +74,7 @@
         <div><span class="text-brand font-bold">Owner:</span> owner / Demo@1234</div>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

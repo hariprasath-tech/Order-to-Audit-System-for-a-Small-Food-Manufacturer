@@ -4,6 +4,7 @@ Authentication, Role-Based Redirection, Role Landings, and Healthcheck Views.
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -50,6 +51,7 @@ def login_view(request):
         {
             "form": form,
             "page_title": "Sign In | Kaveri Foods",
+            "demo_mode": getattr(settings, "DEMO_MODE", False),
         },
     )
 
@@ -82,74 +84,68 @@ def role_redirect_view(request):
     return redirect("/")
 
 
-# Role-Protected Landing Views
-@role_required("salesman")
-def salesman_landing_view(request):
+def _render_role_landing(request, role_code: str, role_display: str, role_description: str):
+    """Internal helper to render consistent workspace shells for authenticated role groups."""
     return render(
         request,
         "roles/landing.html",
         {
-            "role_code": "salesman",
-            "role_display": "Salesman Order Entry",
-            "role_description": "Mobile order entry portal for on-field sales representatives. Quick catalog lookup, draft orders, and offline queueing.",
-            "page_title": "Salesman Orders | Kaveri Foods",
+            "role_code": role_code,
+            "role_display": role_display,
+            "role_description": role_description,
+            "page_title": f"{role_display} | Kaveri Foods",
         },
+    )
+
+
+# Role-Protected Landing Views
+@role_required("salesman")
+def salesman_landing_view(request):
+    return _render_role_landing(
+        request,
+        role_code="salesman",
+        role_display="Salesman Order Entry",
+        role_description="Mobile order entry portal for on-field sales representatives. Quick catalog lookup, draft orders, and offline queueing.",
     )
 
 
 @role_required("admin_desk")
 def admin_desk_landing_view(request):
-    return render(
+    return _render_role_landing(
         request,
-        "roles/landing.html",
-        {
-            "role_code": "admin_desk",
-            "role_display": "Admin Desk Inbox",
-            "role_description": "Factory order verification, dispatch generation, GST invoice printing, and stock allocation.",
-            "page_title": "Admin Desk | Kaveri Foods",
-        },
+        role_code="admin_desk",
+        role_display="Admin Desk Inbox",
+        role_description="Factory order verification, dispatch generation, GST invoice printing, and stock allocation.",
     )
 
 
 @role_required("production")
 def production_landing_view(request):
-    return render(
+    return _render_role_landing(
         request,
-        "roles/landing.html",
-        {
-            "role_code": "production",
-            "role_display": "Production Run Manager",
-            "role_description": "Raw material batch issuance against recipe BOMs, yield tracking, variance calculations, and finished good packing.",
-            "page_title": "Production | Kaveri Foods",
-        },
+        role_code="production",
+        role_display="Production Run Manager",
+        role_description="Raw material batch issuance against recipe BOMs, yield tracking, variance calculations, and finished good packing.",
     )
 
 
 @role_required("accountant")
 def reports_landing_view(request):
-    return render(
+    return _render_role_landing(
         request,
-        "roles/landing.html",
-        {
-            "role_code": "accountant",
-            "role_display": "Auditor & Accounting Reports",
-            "role_description": "Monthly GST reports (GSTR-1, GSTR-3B summaries), immutable stock ledgers, production cost analyses, and debtor balances.",
-            "page_title": "Reports | Kaveri Foods",
-        },
+        role_code="accountant",
+        role_display="Auditor & Accounting Reports",
+        role_description="Monthly GST reports (GSTR-1, GSTR-3B summaries), immutable stock ledgers, production cost analyses, and debtor balances.",
     )
 
 
 @role_required("owner")
 def dashboard_landing_view(request):
-    return render(
+    return _render_role_landing(
         request,
-        "roles/landing.html",
-        {
-            "role_code": "owner",
-            "role_display": "Owner Executive Dashboard",
-            "role_description": "High-level operations overview, financial summaries, production run variance alerts, and collection status.",
-            "page_title": "Dashboard | Kaveri Foods",
-        },
+        role_code="owner",
+        role_display="Owner Executive Dashboard",
+        role_description="High-level operations overview, financial summaries, production run variance alerts, and collection status.",
     )
 
 
