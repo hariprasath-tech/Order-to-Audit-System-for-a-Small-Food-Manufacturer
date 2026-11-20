@@ -99,14 +99,11 @@ def _render_role_landing(request, role_code: str, role_display: str, role_descri
 
 
 # Role-Protected Landing Views
-@role_required("salesman")
+@role_required("salesman", "admin_desk")
 def salesman_landing_view(request):
-    return _render_role_landing(
-        request,
-        role_code="salesman",
-        role_display="Salesman Order Entry",
-        role_description="Mobile order entry portal for on-field sales representatives. Quick catalog lookup, draft orders, and offline queueing.",
-    )
+    from apps.sales.views import salesman_workspace_view
+
+    return salesman_workspace_view(request)
 
 
 @role_required("admin_desk")

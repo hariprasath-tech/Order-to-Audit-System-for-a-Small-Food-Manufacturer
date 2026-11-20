@@ -71,6 +71,7 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls", namespace="accounts")),
     # Role Landing Workspaces (protected via @role_required)
     path("salesman/", account_views.salesman_landing_view, name="salesman_landing"),
+    path("salesman/", include("apps.sales.urls", namespace="salesman")),
     path("admin-desk/", account_views.admin_desk_landing_view, name="admin_desk_landing"),
     path("production/", account_views.production_landing_view, name="production_landing"),
     path("reports/", account_views.reports_landing_view, name="reports_landing"),
