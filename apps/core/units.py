@@ -49,11 +49,17 @@ UNIT_DEFINITIONS = {
 }
 
 
-def convert(quantity, from_unit: str, to_unit: str) -> Decimal:
+def convert(quantity, from_unit, to_unit) -> Decimal:
     """
     Converts a quantity between units of the same dimensional kind using pure Decimal.
     Raises UnitMismatch if units belong to different kinds or are unrecognized.
+    Accepts string unit codes or Unit model instances.
     """
+    if hasattr(from_unit, "code"):
+        from_unit = from_unit.code
+    if hasattr(to_unit, "code"):
+        to_unit = to_unit.code
+
     q = qty(quantity)
     u_from = str(from_unit).strip().lower()
     u_to = str(to_unit).strip().lower()

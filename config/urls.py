@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.staticfiles import finders
 from django.http import FileResponse, Http404
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import include, path
 from django.views.decorators.cache import cache_control
 

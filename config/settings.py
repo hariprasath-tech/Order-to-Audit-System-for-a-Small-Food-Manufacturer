@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     # Domain Applications
     "apps.core.apps.CoreConfig",
     "apps.accounts.apps.AccountsConfig",
+    "apps.masters.apps.MastersConfig",
 ]
 
 MIDDLEWARE = [
