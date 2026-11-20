@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs shell test migrate seed benchmark reconcile clean
+.PHONY: help build up down restart logs shell test migrate seed benchmark reconcile clean lint
 
 help:
 	@echo "Order-to-Audit Snack Factory Makefile"
@@ -14,6 +14,7 @@ help:
 	@echo "  make benchmark   - Run automated end-to-end headless benchmark verification"
 	@echo "  make reconcile   - Run inventory ledger reconciliation"
 	@echo "  make shell       - Open Django interactive shell"
+	@echo "  make lint        - Run ruff linter check"
 	@echo "  make clean       - Remove containers and database volumes"
 
 build:
@@ -48,6 +49,9 @@ reconcile:
 
 shell:
 	docker compose exec web python manage.py shell
+
+lint:
+	ruff check .
 
 clean:
 	docker compose down -v
