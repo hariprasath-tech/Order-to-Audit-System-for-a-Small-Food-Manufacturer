@@ -1,0 +1,54 @@
+{# ============================================================================= #}
+{# Order-to-Audit System - Offline Fallback Template                            #}
+{# ============================================================================= #}
+{# Served by the Service Worker when a navigation request fails while offline.  #}
+{# Expected Context Variables (when rendered by Django view):                    #}
+{#   - page_title: string (optional)                                            #}
+{# ============================================================================= #}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Offline | Order-to-Audit System</title>
+  <link rel="stylesheet" href="/static/dist/app.min.css">
+</head>
+<body class="bg-bg text-ink min-h-full flex flex-col items-center justify-center p-6 text-center">
+
+  <div class="max-w-md w-full card-surface p-8 flex flex-col items-center">
+    {# Murukku Spiral Icon #}
+    <div class="w-16 h-16 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-6">
+      <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 5a7 7 0 1 0 7 7" />
+        <path d="M12 1a11 11 0 1 0 11 11" />
+      </svg>
+    </div>
+
+    <h1 class="font-serif font-bold text-2xl text-ink mb-2">You are currently offline</h1>
+    <p class="text-ink-muted text-sm mb-6 leading-relaxed">
+      Unable to reach Kaveri Foods server. Any orders already saved on your device will automatically sync once your cellular or Wi-Fi connection is restored.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-3 w-full">
+      <button type="button"
+              onclick="window.location.reload()"
+              class="btn btn-brand flex-1">
+        <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Retry Connection
+      </button>
+
+      <a href="/" class="btn btn-surface flex-1">
+        Return Home
+      </a>
+    </div>
+  </div>
+
+  <p class="text-xs text-ink-muted mt-8 font-mono">
+    Error: NETWORK_DISCONNECTED (PWA Offline Fallback)
+  </p>
+
+</body>
+</html>

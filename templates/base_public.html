@@ -1,0 +1,151 @@
+{# ============================================================================= #}
+{# Order-to-Audit System - Public Base Layout (Landing, Login, Marketing)       #}
+{# ============================================================================= #}
+{# Expected Context Variables:                                                  #}
+{#   - page_title: string                                                        #}
+{#   - show_preloader: bool (default true on first landing load)                 #}
+{#   - csrf_token: Django CSRF token string                                     #}
+{# ============================================================================= #}
+<!DOCTYPE html>
+<html lang="en" class="no-js h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Order-to-Audit System for Small Food Manufacturer. Traceability from field order to GST audit.">
+  <meta name="theme-color" content="#D9541E">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+
+  <title>{% block title %}{{ page_title|default:"Order-to-Audit Snack Factory" }}{% endblock %}</title>
+
+  {# PWA Web Manifest & App Icons #}
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+  {# Anti-FOUC & Progressive Enhancement Script #}
+  <script>
+    (function () {
+      try {
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js');
+
+        const stored = localStorage.getItem('theme') || 'system';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = stored === 'dark' || (stored === 'system' && prefersDark);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+
+        const reduceMotion = localStorage.getItem('reduce_motion') === 'true' ||
+          new URLSearchParams(window.location.search).get('motion') === 'off' ||
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+          document.documentElement.setAttribute('data-reduce-motion', 'true');
+        }
+
+        const isSaveData = navigator.connection && navigator.connection.saveData;
+        const isLowMemory = navigator.deviceMemory && navigator.deviceMemory < 4;
+        if (isSaveData || isLowMemory) {
+          document.documentElement.setAttribute('data-low-power', 'true');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+
+  {# Preload Two Critical Self-Hosted Font Weights #}
+  <link rel="preload" href="/static/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+
+  {# Compiled Tailwind CSS Bundle #}
+  <link rel="stylesheet" href="/static/dist/app.min.css">
+
+  {# Core Scripts in <head> with defer #}
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/alpine.min.js" defer></script>
+  <script src="/static/js/motion/tokens.js" defer></script>
+  <script src="/static/js/motion/registry.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+
+  {# Motion Libraries (GSAP & ScrollTrigger self-hosted for public marketing & hero animations) #}
+  {% block motion_libs %}
+    <script src="/static/vendor/gsap.min.js" defer></script>
+    <script src="/static/vendor/ScrollTrigger.min.js" defer></script>
+  {% endblock %}
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-bg text-ink min-h-full flex flex-col font-sans selection:bg-brand-2/30 selection:text-ink relative overflow-x-hidden">
+
+  {# Skip Link #}
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {# Ambient Murukku Spiral Line Motif (Decorative Background) #}
+  <div class="fixed -bottom-24 -right-24 w-96 h-96 opacity-[0.04] pointer-events-none select-none z-0" aria-hidden="true">
+    <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2" class="w-full h-full text-brand">
+      <path d="M100,100 m0,-10 a10,10 0 1,1 0,20 a10,10 0 1,1 0,-20 M100,80 a20,20 0 1,1 0,40 a20,20 0 1,1 0,-40 M100,60 a40,40 0 1,1 0,80 a40,40 0 1,1 0,-80 M100,40 a60,60 0 1,1 0,120 a60,60 0 1,1 0,-120 M100,20 a80,80 0 1,1 0,160 a80,80 0 1,1 0,-160" />
+    </svg>
+  </div>
+
+  {# Public Header #}
+  <header class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-3 group">
+      {# Logo with Murukku Spiral Icon #}
+      <div class="w-10 h-10 rounded-md bg-brand/10 text-brand flex items-center justify-center border border-brand/20 group-hover:scale-105 transition-transform duration-fast">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 5a7 7 0 1 0 7 7" />
+          <path d="M12 1a11 11 0 1 0 11 11" />
+        </svg>
+      </div>
+      <div>
+        <span class="font-serif font-bold text-lg text-ink tracking-tight block">Kaveri Foods</span>
+        <span class="font-mono text-xs text-ink-muted tracking-wider uppercase block">Order-to-Audit System</span>
+      </div>
+    </a>
+
+    {# Utility Controls: Theme & Motion #}
+    <div class="flex items-center gap-3">
+      {# Theme Toggle #}
+      <button type="button"
+              onclick="App.applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark')"
+              class="w-10 h-10 rounded-md border border-line bg-surface hover:bg-surface-2 flex items-center justify-center text-ink-muted hover:text-ink transition-colors focus:outline-none"
+              aria-label="Toggle theme">
+        <svg class="w-5 h-5 hidden dark:block text-brand-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg class="w-5 h-5 block dark:hidden text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+
+      {% block header_actions %}{% endblock %}
+    </div>
+  </header>
+
+  {# Main Content #}
+  <main id="main-content" class="relative z-10 flex-1 flex flex-col justify-center focus:outline-none" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Public Footer #}
+  <footer class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 border-t border-line text-xs text-ink-muted flex flex-col sm:flex-row items-center justify-between gap-4">
+    <p>© 2026 Kaveri Foods Mfg Ltd. Internship shortlisting task, Centre for Digital Infrastructure, NIT Tiruchirappalli.</p>
+    <div class="flex items-center gap-4">
+      <button type="button"
+              onclick="const curr = localStorage.getItem('reduce_motion') === 'true'; localStorage.setItem('reduce_motion', (!curr).toString()); MotionRegistry.initAnimations(document);"
+              class="hover:text-brand underline decoration-dotted transition-colors">
+        Toggle Animation
+      </button>
+      <span>•</span>
+      <span class="font-mono">v1.0.0</span>
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,121 @@
+{# ============================================================================= #}
+{# Order-to-Audit System - Main Application Shell Base Layout                   #}
+{# ============================================================================= #}
+{# Expected Context Variables:                                                  #}
+{#   - page_title: string (e.g., "Order Inbox | Factory Admin")                 #}
+{#   - user: Django User object with role attribute                              #}
+{#   - active_nav: string identifier for navigation highlighting                #}
+{#   - unread_notifications_count: int                                          #}
+{#   - csrf_token: Django CSRF token string                                     #}
+{# ============================================================================= #}
+<!DOCTYPE html>
+<html lang="en" class="no-js h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Order-to-Audit System for Small Food Manufacturer - Complete traceability from sales order to monthly audit.">
+  <meta name="theme-color" content="#D9541E">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+
+  <title>{% block title %}{{ page_title|default:"Order-to-Audit System" }}{% endblock %}</title>
+
+  {# PWA Web Manifest & App Icons #}
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
+  {# Anti-FOUC & Progressive Enhancement Script (Executes synchronously before CSS render) #}
+  <script>
+    (function () {
+      try {
+        // Progressive Enhancement: swap no-js for js
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js');
+
+        // Theme initialization
+        const stored = localStorage.getItem('theme') || 'system';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = stored === 'dark' || (stored === 'system' && prefersDark);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+
+        // Reduced Motion & Low-Power Hardware Checks
+        const reduceMotion = localStorage.getItem('reduce_motion') === 'true' ||
+          new URLSearchParams(window.location.search).get('motion') === 'off' ||
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+          document.documentElement.setAttribute('data-reduce-motion', 'true');
+        }
+
+        const isSaveData = navigator.connection && navigator.connection.saveData;
+        const isLowMemory = navigator.deviceMemory && navigator.deviceMemory < 4;
+        if (isSaveData || isLowMemory) {
+          document.documentElement.setAttribute('data-low-power', 'true');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+
+  {# Preload Two Critical Self-Hosted Font Weights #}
+  <link rel="preload" href="/static/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+
+  {# Compiled Tailwind CSS Bundle (imports fonts.css, tokens.css, and motion.css) #}
+  <link rel="stylesheet" href="/static/dist/app.min.css">
+
+  {# Core Scripts in <head> with defer (100% self-hosted, zero CDN reliance) #}
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/alpine.min.js" defer></script>
+  <script src="/static/js/motion/tokens.js" defer></script>
+  <script src="/static/js/motion/registry.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+
+  {# Slot for optional motion libraries (e.g. GSAP on landing/dashboard only; omitted on operational screens) #}
+  {% block motion_libs %}{% endblock %}
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-bg text-ink min-h-full flex flex-col font-sans selection:bg-brand-2/30 selection:text-ink" hx-boost="true">
+
+  {# Accessible Skip Navigation Link #}
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {# Offline Banner (Sticky Network Gate) #}
+  <div id="offline-banner" class="offline-banner" role="alert" aria-live="assertive" aria-hidden="true">
+    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    <span>Offline mode active. Orders queued locally will sync once connection returns.</span>
+  </div>
+
+  {# Main Top Navigation Slot #}
+  {% block nav %}{% endblock %}
+
+  {# Primary Content Region #}
+  <main id="main-content" class="flex-1 flex flex-col focus:outline-none" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Mobile Bottom Navigation Slot #}
+  {% block bottom_nav %}{% endblock %}
+
+  {# Modals, Drawers & Dialogs Container #}
+  <div id="modal-container">
+    {% block modals %}{% endblock %}
+  </div>
+
+  {# Accessible Live Toast Notifications Container #}
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" role="status" aria-live="polite">
+    {% block toasts %}{% endblock %}
+  </div>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

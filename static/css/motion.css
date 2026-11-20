@@ -1,0 +1,290 @@
+/**
+ * Motion System: Physics, Keyframes, and Declarative Animation Classes
+ * Progressive enhancement: hidden states scoped to .js [data-anim]
+ * will-change applied only while animating (never permanently).
+ */
+
+:root {
+  --dur-instant: 100ms;
+  --dur-fast: 180ms;
+  --dur-base: 280ms;
+  --dur-slow: 480ms;
+  --dur-hero: 900ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasize: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --stagger-item: 40ms;
+  --stagger-card: 70ms;
+  --stagger-hero: 60ms;
+
+  --dist-micro: 4px;
+  --dist-sm: 12px;
+  --dist-md: 24px;
+  --dist-lg: 48px;
+}
+
+/* ==========================================================================
+   Declarative Motion Classes (data-anim hooks)
+   Progressive Enhancement: scoped exclusively to .js [data-anim]
+   ========================================================================== */
+
+.js [data-anim] {
+  opacity: 0;
+}
+
+.js [data-anim="fade-up"] {
+  transform: translateY(var(--dist-md));
+}
+
+.js [data-anim="fade-in"] {
+  transform: none;
+}
+
+.js [data-anim="scale-in"] {
+  transform: scale(0.94);
+}
+
+.js [data-anim="slide-in-left"] {
+  transform: translateX(calc(-1 * var(--dist-md)));
+}
+
+.js [data-anim="slide-in-right"] {
+  transform: translateX(var(--dist-md));
+}
+
+/* Transient will-change: attached ONLY during the active animation window */
+.anim-animating {
+  will-change: transform, opacity;
+  transition-property: transform, opacity;
+  transition-timing-function: var(--ease-emphasize);
+}
+
+/* Triggered Final State */
+[data-anim].is-animated {
+  opacity: 1;
+  transform: none;
+  transition-duration: var(--dur-base);
+}
+
+/* Delay Stagger Helpers - Scoped to .anim-animating so hover/active states are never delayed */
+.anim-animating[data-delay="1"] { transition-delay: calc(1 * var(--stagger-item)); }
+.anim-animating[data-delay="2"] { transition-delay: calc(2 * var(--stagger-item)); }
+.anim-animating[data-delay="3"] { transition-delay: calc(3 * var(--stagger-item)); }
+.anim-animating[data-delay="4"] { transition-delay: calc(4 * var(--stagger-item)); }
+.anim-animating[data-delay="5"] { transition-delay: calc(5 * var(--stagger-item)); }
+.anim-animating[data-delay="6"] { transition-delay: calc(6 * var(--stagger-item)); }
+.anim-animating[data-delay="card-1"] { transition-delay: calc(1 * var(--stagger-card)); }
+.anim-animating[data-delay="card-2"] { transition-delay: calc(2 * var(--stagger-card)); }
+.anim-animating[data-delay="card-3"] { transition-delay: calc(3 * var(--stagger-card)); }
+.anim-animating[data-delay="card-4"] { transition-delay: calc(4 * var(--stagger-card)); }
+
+/* ==========================================================================
+   Keyframes for Specific Micro-Interactions
+   ========================================================================== */
+
+/* 1. Shimmer for Skeletons */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-2);
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.6s infinite ease-in-out;
+}
+
+html.dark .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* 2. Stamp Slam (POSTED watermark badge) */
+@keyframes stampSlam {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-14deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-10deg);
+  }
+}
+
+.anim-stamp {
+  display: inline-block;
+  animation: stampSlam var(--dur-slow) var(--ease-spring) forwards;
+}
+
+/* 3. Shortage Banner Soft Pulse (3 cycles only) */
+@keyframes shortageAlertPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); box-shadow: 0 0 0 4px rgba(194, 58, 43, 0.25); }
+}
+
+.anim-shortage-pulse {
+  animation: shortageAlertPulse 1.2s ease-in-out 3;
+}
+
+/* 4. HTMX Row Swap Highlight Fade */
+@keyframes rowInsertHighlight {
+  0% {
+    background-color: rgba(242, 181, 46, 0.4);
+    transform: translateY(-6px);
+  }
+  100% {
+    background-color: transparent;
+    transform: translateY(0);
+  }
+}
+
+.htmx-swapped-row {
+  animation: rowInsertHighlight 1.2s var(--ease-standard) forwards;
+}
+
+/* 5. Pure CSS Ripple on Tap */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.45) 10%, transparent 10.01%);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scale(10, 10);
+  opacity: 0;
+  transition: transform var(--dur-slow), opacity var(--dur-base);
+}
+
+.btn-ripple:active::after {
+  transform: scale(0, 0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+/* 6. Murukku Spiral Stroke Draw */
+@keyframes strokeDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.murukku-spiral-path {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: strokeDraw 1.8s var(--ease-emphasize) forwards;
+}
+
+/* ==========================================================================
+   View Transitions API (Native & Polyfill Fallback)
+   ========================================================================== */
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: var(--dur-fast) var(--ease-exit) both fadeOut;
+}
+
+::view-transition-new(root) {
+  animation: var(--dur-base) var(--ease-emphasize) both fadeIn;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Accessibility & Reduced Motion Overrides (Strict Rule Compliance)
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .js [data-anim],
+  [data-anim] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: opacity 120ms linear !important;
+  }
+
+  .anim-animating {
+    will-change: auto !important;
+  }
+
+  .anim-stamp,
+  .anim-shortage-pulse,
+  .murukku-spiral-path,
+  .skeleton-shimmer::after {
+    animation: none !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* Manual reduction toggle override: html[data-reduce-motion="true"] */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 120ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-reduce-motion="true"] .js [data-anim],
+html[data-reduce-motion="true"] [data-anim] {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: opacity 120ms linear !important;
+}
+
+html[data-reduce-motion="true"] .anim-animating {
+  will-change: auto !important;
+}

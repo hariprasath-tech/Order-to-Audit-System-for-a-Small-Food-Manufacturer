@@ -1,0 +1,171 @@
+/**
+ * Design Tokens: "Warm Industrial Craft"
+ * Precision ledger meets warm South Indian artisanal snack brand.
+ */
+
+:root {
+  /* Color Palette - Light Hex (Plain CSS Fallback) */
+  --bg: #FBF7F0;
+  --surface: #FFFFFF;
+  --surface-2: #F3EBDD;
+  --ink: #1F1A14;
+  --ink-muted: #6B5F50;
+  --brand: #D9541E;       /* Turmeric-chili orange */
+  --brand-2: #F2B52E;     /* Turmeric yellow */
+  --leaf: #2F7D4F;        /* Deep leaf green (success, in-stock) */
+  --warn: #C98A0B;        /* Mustard amber (warning) */
+  --danger: #C23A2B;      /* Chili red (error, shortage, variance > tolerance) */
+  --line: #E6DCCB;        /* Muted paper rule */
+
+  /* Alpha-Aware Space-Separated RGB Channels (for Tailwind opacity classes e.g. bg-brand/10) */
+  --bg-rgb: 251 247 240;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 243 235 221;
+  --ink-rgb: 31 26 20;
+  --ink-muted-rgb: 107 95 80;
+  --brand-rgb: 217 84 30;
+  --brand-2-rgb: 242 181 46;
+  --leaf-rgb: 47 125 79;
+  --warn-rgb: 201 138 11;
+  --danger-rgb: 194 58 43;
+  --line-rgb: 230 220 203;
+
+  /* Shadows (Two-layer tinted warm shadows, never harsh black) */
+  --shadow-sm: 0 1px 2px 0 rgba(31, 26, 20, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(31, 26, 20, 0.07), 0 2px 4px -2px rgba(31, 26, 20, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(31, 26, 20, 0.08), 0 4px 6px -4px rgba(31, 26, 20, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(31, 26, 20, 0.10), 0 8px 10px -6px rgba(31, 26, 20, 0.05);
+  --shadow-inner: inset 0 2px 4px 0 rgba(31, 26, 20, 0.06);
+
+  /* Border Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-packet: 16px 4px 16px 4px;
+
+  /* Typography Scale (1.25 Modular Fluid Scale with clamp) */
+  --font-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-xs: clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);      /* 12px - 13px */
+  --text-sm: clamp(0.875rem, 0.84rem + 0.18vw, 0.9375rem);     /* 14px - 15px */
+  --text-base: clamp(1rem, 0.96rem + 0.20vw, 1.0625rem);       /* 16px - 17px */
+  --text-lg: clamp(1.25rem, 1.18rem + 0.35vw, 1.375rem);       /* 20px - 22px */
+  --text-xl: clamp(1.5625rem, 1.45rem + 0.56vw, 1.75rem);      /* 25px - 28px */
+  --text-2xl: clamp(1.953rem, 1.80rem + 0.77vw, 2.25rem);      /* 31px - 36px */
+  --text-3xl: clamp(2.441rem, 2.22rem + 1.10vw, 2.875rem);     /* 39px - 46px */
+  --text-4xl: clamp(3.052rem, 2.75rem + 1.51vw, 3.75rem);      /* 49px - 60px */
+
+  /* Spacing Grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Mobile Safe Areas */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/* Dark Theme (Midnight Workshop) */
+html.dark,
+[data-theme="dark"] {
+  --bg: #14110D;
+  --surface: #1D1914;
+  --surface-2: #26211A;
+  --ink: #F5EFE4;
+  --ink-muted: #A89C8A;
+  --brand: #F06A32;
+  --brand-2: #F5C24D;
+  --leaf: #4CB47A;
+  --warn: #E3A82B;
+  --danger: #EF6A5B;
+  --line: #3A3227;
+
+  --bg-rgb: 20 17 13;
+  --surface-rgb: 29 25 20;
+  --surface-2-rgb: 38 33 26;
+  --ink-rgb: 245 239 228;
+  --ink-muted-rgb: 168 156 138;
+  --brand-rgb: 240 106 50;
+  --brand-2-rgb: 245 194 77;
+  --leaf-rgb: 76 180 122;
+  --warn-rgb: 227 168 43;
+  --danger-rgb: 239 106 91;
+  --line-rgb: 58 50 39;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.50), 0 4px 6px -4px rgba(0, 0, 0, 0.30);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.60), 0 8px 10px -6px rgba(0, 0, 0, 0.40);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.50);
+}
+
+/* Paper Grain Texture Overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Disable grain overlay under reduced-motion, reduced-data, or low-power */
+@media (prefers-reduced-motion: reduce) {
+  body::before { display: none !important; }
+}
+
+@media (prefers-reduced-data: reduce) {
+  body::before { display: none !important; }
+}
+
+html[data-reduce-motion="true"] body::before,
+html[data-low-power="true"] body::before {
+  display: none !important;
+}
+
+/* Tabular Numbers for all Financial and Quantity Cells */
+.tabular-nums,
+table td,
+.kpi-value,
+.odometer {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Signature Ledger Divider Line Motif */
+.ledger-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block: var(--space-6);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ledger-divider::before,
+.ledger-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px dashed var(--line);
+}
+
+.ledger-divider-tick {
+  width: 6px;
+  height: 6px;
+  background-color: var(--brand);
+  transform: rotate(45deg);
+}
