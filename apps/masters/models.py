@@ -1,7 +1,7 @@
 """
 Master Data Models for Order-to-Audit Food Manufacturing System.
 Covers Units, Items, Products, Customers, Suppliers, Price Lists, and Bills of Materials (BOM).
-All monetary values use DecimalField(14, 2), rates (14, 4), quantities (16, 4).
+All monetary values use DecimalField(14, 2), unit rates use DecimalField(18, 8), quantities (16, 4).
 Strictly zero floating-point model fields allowed.
 """
 
@@ -11,11 +11,13 @@ from django.conf import settings
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from apps.core.money import qty
 from apps.masters.validators import validate_gstin, validate_state_code
 
 # Standard Quantizers for Validation
 MONEY_ZERO = Decimal("0.00")
 RATE_ZERO = Decimal("0.0000")
+UNIT_RATE_ZERO = Decimal("0.00000000")
 QTY_ZERO = Decimal("0.0000")
 
 
@@ -58,10 +60,11 @@ class Unit(models.Model):
     def convert_to(self, target_unit: "Unit", quantity) -> Decimal:
         """
         Converts quantity from this unit to target_unit using the table's factor_to_base.
-        Raises UnitMismatch if units belong to different dimensional kinds.
+        NOTE: This helper method is intended for UI display and reference presentation only.
+        All ledger stock movements and core balance calculations MUST use
+        apps.core.units.convert() with item.base_unit directly.
         """
         from apps.core.errors import UnitMismatch
-        from apps.core.money import qty
 
         if self.kind != target_unit.kind:
             raise UnitMismatch(
@@ -112,11 +115,11 @@ class Item(models.Model):
         blank=True,
         help_text="Minimum stock threshold in base unit for low-stock warnings.",
     )
-    valuation_rate = models.DecimalField(
-        max_digits=14,
-        decimal_places=4,
-        default=Decimal("0.0000"),
-        help_text="Current moving weighted-average cost per base unit.",
+    standard_rate = models.DecimalField(
+        max_digits=18,
+        decimal_places=8,
+        default=Decimal("0.00000000"),
+        help_text="Opening/standard cost rate per base unit (8 decimal places). The running moving average is maintained on the stock balance in Phase 3.",
     )
     is_active = models.BooleanField(default=True)
 
@@ -131,6 +134,85 @@ class Item(models.Model):
         return f"[{self.item_type}] {self.name} ({self.code})"
 
 
+class BOM(models.Model):
+    """
+    Bill of Materials (recipe) specifying raw material and packaging consumption per batch.
+
+    SHARED RECIPE ARCHITECTURE:
+    One master BOM record (e.g. 'Murukku Classic', 40,000 g bulk dough batch) serves multiple
+    finished package sizes (e.g. 200g Murukku, 500g Murukku).
+    - Raw dough material lines have `product=None` (shared across all products using this BOM).
+    - Packaging component lines (consumer pouches, outer cartons) have `product` set to the specific pack size.
+    - Expected output in saleable packets per batch = batch_output_g / product.pack_size_g
+      (e.g. 40,000g / 200g = 200 packets; 40,000g / 500g = 80 packets).
+    - Updating a shared raw material line (e.g. flour) once automatically updates raw material
+      consumption for all products sharing this BOM.
+    """
+
+    name = models.CharField(max_length=64, default="Murukku Classic")
+    version = models.PositiveIntegerField(default=1)
+    batch_output_g = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("40000.00"),
+        help_text="Expected bulk finished dough yield in grams per standard batch (e.g. 40,000.00 g = 40 kg).",
+    )
+    is_active = models.BooleanField(default=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(is_active=True),
+                name="unique_active_bom_per_name",
+            ),
+            models.UniqueConstraint(
+                fields=["name", "version"],
+                name="unique_bom_version_per_name",
+            ),
+        ]
+        ordering = ["name", "-version"]
+        verbose_name = "Bill of Materials (BOM)"
+        verbose_name_plural = "Bills of Materials (BOMs)"
+
+    def __str__(self):
+        status = "Active" if self.is_active else "Archived"
+        return f"{self.name} BOM v{self.version} ({int(self.batch_output_g)}g batch) [{status}]"
+
+    def expected_packets(self, product: "Product") -> int:
+        """Calculates expected finished packets per batch: batch_output_g / pack_size_g."""
+        return int(self.batch_output_g / product.pack_size_g)
+
+    def planned_consumption(
+        self, product: "Product", batches: Decimal = Decimal("1.0000")
+    ) -> list[dict]:
+        """
+        Returns planned component consumption for a given Product and batch count.
+        Combines shared core dough ingredients (product is None) with product-specific packaging items.
+        Scales: planned_qty = qty_base * batches.
+        """
+        b = qty(batches)
+        lines = (
+            self.lines.filter(models.Q(product__isnull=True) | models.Q(product=product))
+            .select_related("item", "item__base_unit", "display_unit")
+            .order_by("item__item_type", "item__name")
+        )
+
+        results = []
+        for line in lines:
+            results.append(
+                {
+                    "item": line.item,
+                    "qty_base": qty(line.qty_base * b),
+                    "display_unit": line.display_unit,
+                    "is_shared": line.product is None,
+                }
+            )
+        return results
+
+
 class Product(models.Model):
     """
     Sales and commercial packaging profile for a FINISHED Item.
@@ -142,6 +224,14 @@ class Product(models.Model):
         on_delete=models.CASCADE,
         related_name="product_profile",
         limit_choices_to={"item_type": "FINISHED"},
+    )
+    bom = models.ForeignKey(
+        BOM,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="products",
+        help_text="Associated recipe Bill of Materials.",
     )
     pack_size_g = models.DecimalField(
         max_digits=10,
@@ -155,7 +245,7 @@ class Product(models.Model):
     list_price = models.DecimalField(
         max_digits=14,
         decimal_places=2,
-        help_text="Default list selling price per packet including GST.",
+        help_text="Default list selling price per packet excluding GST (selling price before tax).",
     )
 
     history = HistoricalRecords()
@@ -167,6 +257,51 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.item.name} ({int(self.pack_size_g)}g) - ₹{self.list_price}"
+
+    def planned_consumption(self, batches: Decimal = Decimal("1.0000")) -> list[dict]:
+        """Convenience delegation to associated BOM planned_consumption."""
+        if not self.bom:
+            raise ValueError(f"Product {self} has no BOM assigned.")
+        return self.bom.planned_consumption(self, batches)
+
+
+class BOMLine(models.Model):
+    """Component line inside a Bill of Materials."""
+
+    bom = models.ForeignKey(BOM, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="bom_packaging_lines",
+        help_text="Null for shared bulk ingredients (dough); set for product-specific packaging items (pouches, cartons).",
+    )
+    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="bom_usages")
+    qty_base = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        help_text="Required quantity per batch stored in the Item's base unit (g, ml, pc).",
+    )
+    display_unit = models.ForeignKey(
+        Unit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bom_display_lines",
+        help_text="Optional human-friendly display unit (e.g. kg instead of g).",
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["item__item_type", "item__name"]
+        verbose_name = "BOM Component Line"
+        verbose_name_plural = "BOM Component Lines"
+
+    def __str__(self):
+        scope = f"[{self.product.item.name}]" if self.product else "[Shared]"
+        return f"{self.bom.name} {scope}: {self.item.name} ({self.qty_base} {self.item.base_unit.code})"
 
 
 class Customer(models.Model):
@@ -327,110 +462,3 @@ class CustomerPrice(models.Model):
 
     def __str__(self):
         return f"{self.customer.name} override: {self.product} @ ₹{self.custom_price}"
-
-
-class BOM(models.Model):
-    """
-    Bill of Materials (recipe) specifying raw material and packaging consumption per batch.
-
-    SHARED RECIPE ARCHITECTURE:
-    In commercial food manufacturing, core formulations (e.g. Murukku dough batch)
-    produce a standard bulk yield (e.g. 40.00 kg of fried murukku dough) from standard raw materials
-    (40 kg flour, 10 L oil, 1.2 kg spices).
-    Different finished package sizes share this identical core dough recipe:
-    - A 200g Murukku Product yields 200 packets per 40 kg batch (40,000g / 200g = 200 pkts).
-    - A 500g Murukku Product yields 80 packets per 40 kg batch (40,000g / 500g = 80 pkts).
-
-    Each Product has its own active BOM linking to the shared `recipe_group` with its `yield_basis`.
-    The raw material batch consumption (dough lines) is identical across the recipe_group,
-    while packaging components (e.g., 200g pouches vs 500g pouches, and outer cartons)
-    scale according to the finished product's specific packet count.
-    """
-
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="boms")
-    version = models.PositiveIntegerField(default=1)
-    batch_output_packets = models.PositiveIntegerField(
-        default=200,
-        help_text="Standard expected output in finished saleable packets per batch.",
-    )
-    recipe_group = models.CharField(
-        max_length=64,
-        default="MURUKKU_CLASSIC",
-        help_text="Identifies shared recipe formulation across different pack sizes.",
-    )
-    yield_basis = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal("40.00"),
-        help_text="Expected bulk finished dough yield in kg per standard batch.",
-    )
-    is_active = models.BooleanField(default=True)
-
-    history = HistoricalRecords()
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["product"],
-                condition=models.Q(is_active=True),
-                name="unique_active_bom_per_product",
-            ),
-            models.UniqueConstraint(
-                fields=["product", "version"],
-                name="unique_bom_version_per_product",
-            ),
-        ]
-        ordering = ["product", "-version"]
-        verbose_name = "Bill of Materials (BOM)"
-        verbose_name_plural = "Bills of Materials (BOMs)"
-
-    def __str__(self):
-        status = "Active" if self.is_active else "Archived"
-        return f"{self.product.item.name} BOM v{self.version} ({self.batch_output_packets} pkts/batch) [{status}]"
-
-    def scale_consumption(self, batches: Decimal = Decimal("1.0000")) -> list[dict]:
-        """
-        Scales planned consumption for a given number of production batches.
-        planned_qty = qty_base * batches
-        """
-        results = []
-        for line in self.lines.select_related("item", "display_unit"):
-            planned_qty = line.qty_base * batches
-            results.append(
-                {
-                    "item": line.item,
-                    "qty_base": planned_qty,
-                    "display_unit": line.display_unit,
-                }
-            )
-        return results
-
-
-class BOMLine(models.Model):
-    """Component line inside a Bill of Materials."""
-
-    bom = models.ForeignKey(BOM, on_delete=models.CASCADE, related_name="lines")
-    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="bom_usages")
-    qty_base = models.DecimalField(
-        max_digits=16,
-        decimal_places=4,
-        help_text="Required quantity per batch stored in the Item's base unit (g, ml, pc).",
-    )
-    display_unit = models.ForeignKey(
-        Unit,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="bom_display_lines",
-        help_text="Optional human-friendly display unit (e.g. kg instead of g).",
-    )
-
-    history = HistoricalRecords()
-
-    class Meta:
-        ordering = ["item__item_type", "item__name"]
-        verbose_name = "BOM Component Line"
-        verbose_name_plural = "BOM Component Lines"
-
-    def __str__(self):
-        return f"{self.bom.product.item.name} component: {self.item.name} ({self.qty_base} {self.item.base_unit.code})"

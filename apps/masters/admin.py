@@ -22,29 +22,27 @@ from apps.masters.models import (
 class BOMLineInline(admin.TabularInline):
     model = BOMLine
     extra = 1
-    autocomplete_fields = ["item", "display_unit"]
+    autocomplete_fields = ["item", "product", "display_unit"]
 
 
 @admin.register(BOM)
 class BOMAdmin(SimpleHistoryAdmin):
     list_display = [
-        "product",
+        "name",
         "version",
-        "batch_output_packets",
-        "recipe_group",
-        "yield_basis",
+        "batch_output_g",
         "is_active",
     ]
-    list_filter = ["is_active", "recipe_group"]
-    search_fields = ["product__item__name", "recipe_group"]
+    list_filter = ["is_active"]
+    search_fields = ["name"]
     inlines = [BOMLineInline]
 
 
 @admin.register(BOMLine)
 class BOMLineAdmin(SimpleHistoryAdmin):
-    list_display = ["bom", "item", "qty_base", "display_unit"]
-    list_filter = ["bom__product"]
-    search_fields = ["item__name", "bom__product__item__name"]
+    list_display = ["bom", "product", "item", "qty_base", "display_unit"]
+    list_filter = ["bom", "product"]
+    search_fields = ["item__name", "bom__name"]
 
 
 class PriceListLineInline(admin.TabularInline):
@@ -89,7 +87,7 @@ class ItemAdmin(SimpleHistoryAdmin):
         "name",
         "item_type",
         "base_unit",
-        "valuation_rate",
+        "standard_rate",
         "gst_rate",
         "is_active",
     ]
@@ -99,7 +97,7 @@ class ItemAdmin(SimpleHistoryAdmin):
 
 @admin.register(Product)
 class ProductAdmin(SimpleHistoryAdmin):
-    list_display = ["item", "pack_size_g", "packets_per_carton", "list_price"]
+    list_display = ["item", "bom", "pack_size_g", "packets_per_carton", "list_price"]
     search_fields = ["item__name", "item__code"]
 
 
