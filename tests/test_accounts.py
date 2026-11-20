@@ -1,13 +1,14 @@
 """
-Unit tests for Role-Based Access Control, Authentication, Role Landings, and Role Routing.
+Unit tests for Role-Based Access Control, Authentication, Role Landings, and Demo Users.
 """
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
+from django.core.management import call_command
 from django.http import HttpResponse
-from django.test import Client, RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase, override_settings
 
 from apps.accounts.decorators import role_required
 from apps.accounts.views import role_redirect_view
@@ -130,12 +131,26 @@ class TestAccountsRBAC(TestCase):
         assert post_response.url == "/accounts/login/"
 
     def test_login_page_renders_form(self):
-        """Login page must render working username and password form with role credentials hint."""
+        """Login page must render working username and password form."""
         response = self.client.get("/accounts/login/")
         assert response.status_code == 200
         assert "username" in response.content.decode()
         assert "password" in response.content.decode()
+
+    @override_settings(DEMO_MODE=True)
+    def test_login_page_renders_demo_hints_when_demo_mode_true(self):
+        """When DEMO_MODE is True, login page renders the demo accounts hint box."""
+        response = self.client.get("/accounts/login/")
+        assert response.status_code == 200
         assert "Role Test Logins" in response.content.decode()
+        assert "salesman_a" in response.content.decode()
+
+    @override_settings(DEMO_MODE=False)
+    def test_login_page_hides_demo_hints_when_demo_mode_false(self):
+        """When DEMO_MODE is False, login page does not expose demo accounts hint box."""
+        response = self.client.get("/accounts/login/")
+        assert response.status_code == 200
+        assert "Role Test Logins" not in response.content.decode()
 
     def test_role_landing_page_authorized_and_logout_form(self):
         """Authorized user gets 200 on their role workspace with data-logout sign out button."""
@@ -152,3 +167,26 @@ class TestAccountsRBAC(TestCase):
         # Salesman attempting to access production workspace
         response = self.client.get("/production/")
         assert response.status_code == 403
+
+    def test_create_demo_users_command_idempotency(self):
+        """Management command create_demo_users creates all 6 demo accounts and is safely idempotent."""
+        expected_users = {
+            "salesman_a": "salesman",
+            "salesman_b": "salesman",
+            "admin_user": "admin_desk",
+            "production": "production",
+            "accountant": "accountant",
+            "owner": "owner",
+        }
+
+        # First execution: creates accounts
+        call_command("create_demo_users")
+
+        for username, expected_group in expected_users.items():
+            user = User.objects.get(username=username)
+            assert user.check_password("Demo@1234")
+            assert user.groups.filter(name=expected_group).exists()
+
+        # Second execution: updates/resets accounts without errors or duplicates
+        call_command("create_demo_users")
+        assert User.objects.filter(username__in=expected_users.keys()).count() == 6

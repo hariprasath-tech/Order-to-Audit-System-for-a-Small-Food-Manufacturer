@@ -33,9 +33,12 @@ class ConfigurationTests(SimpleTestCase):
         self.assertIsInstance(settings.DEFAULT_VARIANCE_TOLERANCE, Decimal)
 
     def test_https_and_csrf_settings(self):
-        """Verifies USE_HTTPS and CSRF_TRUSTED_ORIGINS settings exist and behave correctly."""
+        """Verifies USE_HTTPS, DEMO_MODE, and CSRF_TRUSTED_ORIGINS settings exist and behave correctly."""
         self.assertIsInstance(settings.USE_HTTPS, bool)
+        self.assertIsInstance(settings.DEMO_MODE, bool)
         self.assertIsInstance(settings.CSRF_TRUSTED_ORIGINS, list)
+        # Obsolete XSS filter removed
+        self.assertFalse(hasattr(settings, "SECURE_BROWSER_XSS_FILTER"))
 
 
 class RootRoutingTests(SimpleTestCase):
