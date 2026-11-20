@@ -1,5 +1,5 @@
 """
-Test suite for Phase 2: Masters, Units, Bills of Materials (BOM), Pricing Resolution, and GSTIN.
+Test suite for Phase 2: Masters, Units, Shared Bills of Materials (BOM), Pricing Resolution, and GSTIN.
 """
 
 from decimal import Decimal
@@ -106,26 +106,33 @@ class TestUnitConversions:
         with pytest.raises(UnitMismatch, match="Cannot convert between incompatible"):
             u_pc.convert_to(u_g, Decimal("10"))
 
-        # 5. Global convert() accepting Unit model instances
+        # 5. Global convert() accepting Unit model instances or string codes
         assert convert(Decimal("1.5"), u_kg, u_g) == Decimal("1500.0000")
         assert convert(Decimal("500"), u_ml, u_l) == Decimal("0.5000")
+        assert convert(Decimal("2.5"), "kg", "g") == Decimal("2500.0000")
 
 
 @pytest.mark.django_db
-class TestBOMAndRecipe:
-    """Verifies BOM consumption scaling, active-BOM partial constraints, and shared recipes."""
+class TestBOMAndSharedRecipe:
+    """Verifies single shared BOM architecture across pack sizes and scaling."""
 
     @pytest.fixture(autouse=True)
     def setup_master_data(self):
         call_command("seed_benchmark")
 
-    def test_bom_consumption_scaling(self):
-        """Verifies BOM planned component scaling across production batches."""
-        product = Product.objects.get(item__code="FG-MURUKKU-200G")
-        bom = BOM.objects.get(product=product, is_active=True)
+    def test_benchmark_bom_planned_consumption(self):
+        """After seed, planned_consumption for Murukku 200g matches benchmark specification."""
+        product_200g = Product.objects.get(item__code="FG-MURUKKU-200G")
+        bom = product_200g.bom
+        assert bom is not None
+        assert bom.batch_output_g == Decimal("40000.00")
+        assert bom.expected_packets(product_200g) == 200
 
-        # 1 batch scaling
-        plan_1 = {c["item"].code: c["qty_base"] for c in bom.scale_consumption(Decimal("1.0000"))}
+        # 1 batch scaling: 40kg dough + 200 pouches + 10 cartons
+        plan_1 = {
+            c["item"].code: c["qty_base"]
+            for c in bom.planned_consumption(product_200g, Decimal("1.0000"))
+        }
         assert plan_1["RAW-FLOUR"] == Decimal("40000.0000")  # 40 kg
         assert plan_1["RAW-OIL"] == Decimal("10000.0000")  # 10 L
         assert plan_1["RAW-SPICE"] == Decimal("1200.0000")  # 1.2 kg
@@ -133,78 +140,42 @@ class TestBOMAndRecipe:
         assert plan_1["PKG-CARTON"] == Decimal("10.0000")  # 10 cartons
 
         # 2.5 batches scaling
-        plan_2_5 = {c["item"].code: c["qty_base"] for c in bom.scale_consumption(Decimal("2.5000"))}
+        plan_2_5 = {
+            c["item"].code: c["qty_base"]
+            for c in bom.planned_consumption(product_200g, Decimal("2.5000"))
+        }
         assert plan_2_5["RAW-FLOUR"] == Decimal("100000.0000")  # 100 kg
         assert plan_2_5["RAW-OIL"] == Decimal("25000.0000")  # 25 L
         assert plan_2_5["RAW-SPICE"] == Decimal("3000.0000")  # 3.0 kg
         assert plan_2_5["PKG-POUCH-200G"] == Decimal("500.0000")  # 500 pouches
         assert plan_2_5["PKG-CARTON"] == Decimal("25.0000")  # 25 cartons
 
-    def test_active_bom_partial_unique_constraint(self):
-        """Ensures database enforces only one active BOM per product."""
-        product = Product.objects.get(item__code="FG-MURUKKU-200G")
-
-        # BOM v1 is already active from seed_benchmark.
-        # Creating a second active BOM v2 must violate unique_active_bom_per_product.
-        with transaction.atomic():
-            with pytest.raises(IntegrityError):
-                BOM.objects.create(
-                    product=product,
-                    version=2,
-                    batch_output_packets=200,
-                    recipe_group="MURUKKU_CLASSIC",
-                    yield_basis=Decimal("40.00"),
-                    is_active=True,
-                )
-
-        # Creating an inactive BOM v2 is permitted
-        bom_v2 = BOM.objects.create(
-            product=product,
-            version=2,
-            batch_output_packets=200,
-            recipe_group="MURUKKU_CLASSIC",
-            yield_basis=Decimal("40.00"),
-            is_active=False,
-        )
-        assert bom_v2.pk is not None
-
-        # Deactivating v1 allows v2 to become active
-        bom_v1 = BOM.objects.get(product=product, version=1)
-        bom_v1.is_active = False
-        bom_v1.save()
-
-        bom_v2.is_active = True
-        bom_v2.save()
-        assert BOM.objects.filter(product=product, is_active=True).count() == 1
-
     def test_shared_recipe_formulation_500g_product(self):
         """
-        Demonstrates adding a 500g Murukku product sharing the classic recipe formulation.
-        Core dough batch yields 40.00 kg.
-        - 200g Murukku yields 200 pkts / batch (40,000 / 200).
-        - 500g Murukku yields 80 pkts / batch (40,000 / 500).
-        Raw materials are identical per batch; packaging items scale to the 80 pkt yield.
+        Adding a 500g Product to the same BOM takes one Product record plus its pouch and carton lines,
+        creating NO raw dough material lines.
+        Raw consumption for both products is identical.
+        Changing the flour line once in the BOM updates raw consumption for both products.
         """
-        u_g = Unit.objects.get(code="g")
-        u_kg = Unit.objects.get(code="kg")
-        u_l = Unit.objects.get(code="l")
         u_pc = Unit.objects.get(code="pc")
-
-        flour = Item.objects.get(code="RAW-FLOUR")
-        oil = Item.objects.get(code="RAW-OIL")
-        spice = Item.objects.get(code="RAW-SPICE")
         carton = Item.objects.get(code="PKG-CARTON")
+        product_200g = Product.objects.get(item__code="FG-MURUKKU-200G")
+        bom = product_200g.bom
 
-        # Create packaging item for 500g pouch
+        # Count existing raw material lines before adding 500g pack
+        raw_lines_before = BOMLine.objects.filter(bom=bom, item__item_type="RAW").count()
+        assert raw_lines_before == 3  # Flour, Oil, Spice
+
+        # Create 500g packaging item
         pouch_500g = Item.objects.create(
             code="PKG-POUCH-500G",
             name="500g Printed Pouch",
             item_type="PACKAGING",
             base_unit=u_pc,
-            valuation_rate=Decimal("4.5000"),
+            standard_rate=Decimal("4.50000000"),
         )
 
-        # Create Finished Good Item & Product Profile for 500g Murukku
+        # Create Finished Good Item & Product Profile for 500g Murukku sharing the same BOM
         fg_500g_item = Item.objects.create(
             code="FG-MURUKKU-500G",
             name="Murukku 500g Pack",
@@ -215,56 +186,85 @@ class TestBOMAndRecipe:
         )
         product_500g = Product.objects.create(
             item=fg_500g_item,
+            bom=bom,  # Same master recipe
             pack_size_g=Decimal("500.00"),
             packets_per_carton=20,
             list_price=Decimal("120.00"),
         )
 
-        # 40kg dough yield / 0.5kg per packet = 80 packets per batch
-        batch_packets_500g = int(Decimal("40000.00") / product_500g.pack_size_g)
-        assert batch_packets_500g == 80
+        # 40,000 g dough / 500 g per packet = 80 packets per batch
+        assert bom.expected_packets(product_500g) == 80
 
-        # Create BOM sharing the 'MURUKKU_CLASSIC' recipe group
-        bom_500g = BOM.objects.create(
+        # Add ONLY packaging lines for the 500g product (NO raw lines created!)
+        BOMLine.objects.create(
+            bom=bom,
             product=product_500g,
-            version=1,
-            batch_output_packets=batch_packets_500g,
-            recipe_group="MURUKKU_CLASSIC",
-            yield_basis=Decimal("40.00"),
-            is_active=True,
+            item=pouch_500g,
+            qty_base=Decimal("80.0000"),
+            display_unit=u_pc,
+        )
+        BOMLine.objects.create(
+            bom=bom,
+            product=product_500g,
+            item=carton,
+            qty_base=Decimal("4.0000"),  # 80 packets / 20 pkts per carton = 4 cartons
+            display_unit=u_pc,
         )
 
-        # Dough raw materials match standard 40kg formulation
-        BOMLine.objects.create(
-            bom=bom_500g, item=flour, qty_base=Decimal("40000.0000"), display_unit=u_kg
-        )
-        BOMLine.objects.create(
-            bom=bom_500g, item=oil, qty_base=Decimal("10000.0000"), display_unit=u_l
-        )
-        BOMLine.objects.create(
-            bom=bom_500g, item=spice, qty_base=Decimal("1200.0000"), display_unit=u_g
-        )
+        # Ensure NO new raw material lines were created
+        raw_lines_after = BOMLine.objects.filter(bom=bom, item__item_type="RAW").count()
+        assert raw_lines_after == raw_lines_before
 
-        # Packaging lines match 80 packet yield
-        cartons_required = Decimal(
-            str(batch_packets_500g / product_500g.packets_per_carton)
-        )  # 80 / 20 = 4
-        BOMLine.objects.create(
-            bom=bom_500g, item=pouch_500g, qty_base=Decimal("80.0000"), display_unit=u_pc
-        )
-        BOMLine.objects.create(
-            bom=bom_500g, item=carton, qty_base=cartons_required, display_unit=u_pc
-        )
+        # Raw consumption for both products is identical
+        raw_200 = [x for x in bom.planned_consumption(product_200g) if x["is_shared"]]
+        raw_500 = [x for x in bom.planned_consumption(product_500g) if x["is_shared"]]
+        assert raw_200 == raw_500
 
-        # Scale consumption for 2 batches of 500g Murukku
-        plan = {
-            c["item"].code: c["qty_base"] for c in bom_500g.scale_consumption(Decimal("2.0000"))
+        # Changing the flour line once in the BOM updates raw consumption for BOTH products
+        flour_line = BOMLine.objects.get(bom=bom, item__code="RAW-FLOUR")
+        flour_line.qty_base = Decimal("42000.0000")  # Change from 40kg to 42kg
+        flour_line.save()
+
+        plan_200_updated = {
+            c["item"].code: c["qty_base"] for c in bom.planned_consumption(product_200g)
         }
-        assert plan["RAW-FLOUR"] == Decimal("80000.0000")  # 80 kg
-        assert plan["RAW-OIL"] == Decimal("20000.0000")  # 20 L
-        assert plan["RAW-SPICE"] == Decimal("2400.0000")  # 2.4 kg
-        assert plan["PKG-POUCH-500G"] == Decimal("160.0000")  # 160 pouches
-        assert plan["PKG-CARTON"] == Decimal("8.0000")  # 8 outer cartons
+        plan_500_updated = {
+            c["item"].code: c["qty_base"] for c in bom.planned_consumption(product_500g)
+        }
+        assert plan_200_updated["RAW-FLOUR"] == Decimal("42000.0000")
+        assert plan_500_updated["RAW-FLOUR"] == Decimal("42000.0000")
+
+    def test_one_active_bom_per_name_constraint(self):
+        """Ensures database enforces only one active BOM per recipe name."""
+        bom_v1 = BOM.objects.get(name="Murukku Classic", version=1)
+        assert bom_v1.is_active is True
+
+        # Creating a second active BOM with the same name must violate unique_active_bom_per_name
+        with transaction.atomic():
+            with pytest.raises(IntegrityError):
+                BOM.objects.create(
+                    name="Murukku Classic",
+                    version=2,
+                    batch_output_g=Decimal("40000.00"),
+                    is_active=True,
+                )
+
+        # Inactive BOM v2 is permitted
+        bom_v2 = BOM.objects.create(
+            name="Murukku Classic",
+            version=2,
+            batch_output_g=Decimal("40000.00"),
+            is_active=False,
+        )
+        assert bom_v2.pk is not None
+
+        # Deactivating v1 allows v2 to become active
+        bom_v1.is_active = False
+        bom_v1.save()
+
+        bom_v2.is_active = True
+        bom_v2.save()
+        assert BOM.objects.filter(name="Murukku Classic", is_active=True).count() == 1
 
 
 @pytest.mark.django_db
@@ -285,32 +285,27 @@ class TestValidators:
             validate_state_code("")
 
     def test_gstin_validator(self):
-        # Valid 15-char statutory format
         validate_gstin("33AAAAA1111A1Z1", state_code="33")
         validate_gstin("29BBBBB2222B1Z2", state_code="29")
 
-        # Invalid length
         with pytest.raises(ValidationError, match="GSTIN must be exactly 15 characters long"):
             validate_gstin("33AAAAA1111A1Z")
 
-        # Invalid pattern
         with pytest.raises(ValidationError, match="Invalid GSTIN structure"):
             validate_gstin("33AAAAA1111A1-1")
 
-        # State code prefix mismatch (e.g. Karnataka prefix 29 on Tamil Nadu entity 33)
         with pytest.raises(
             ValidationError, match="GSTIN state prefix '29' does not match entity state code '33'"
         ):
             validate_gstin("29BBBBB2222B1Z2", state_code="33")
 
     def test_customer_model_clean_validation(self):
-        """Ensures Customer model validates state code and GSTIN on save."""
         customer = Customer(
             code="CUST-INVALID",
             name="Invalid GSTIN Customer",
             customer_type="RETAILER",
             state_code="33",
-            gstin="29AAAAA1111A1Z1",  # Starts with 29, but state_code is 33
+            gstin="29AAAAA1111A1Z1",
         )
         with pytest.raises(
             ValidationError, match="GSTIN state prefix '29' does not match entity state code '33'"
@@ -320,45 +315,71 @@ class TestValidators:
 
 @pytest.mark.django_db
 class TestPriceResolution:
-    """Verifies price resolution hierarchy: CustomerPrice -> Type PriceList -> Default PriceList -> list_price."""
+    """Verifies benchmark ₹50.00 pricing for all customers and full resolution hierarchy."""
 
     @pytest.fixture(autouse=True)
     def setup_data(self):
         call_command("seed_benchmark")
 
-    def test_price_resolution_hierarchy(self):
+    def test_seed_benchmark_prices_at_fifty_for_all_customers(self):
+        """Rule 1: Murukku 200g is priced at 50.00 for EVERY customer after seed_benchmark."""
         product_200g = Product.objects.get(item__code="FG-MURUKKU-200G")
         retailer_a = Customer.objects.get(code="CUST-RETAILER-A")
         distributor_b = Customer.objects.get(code="CUST-DIST-B")
 
-        # 1. Retailer A has direct CustomerPrice override (₹48.00)
-        price_a = resolve_product_price(retailer_a, product_200g)
-        assert price_a == Decimal("48.00")
+        # Both must resolve to ₹50.00
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("50.00")
+        assert resolve_product_price(distributor_b, product_200g) == Decimal("50.00")
 
-        # 2. Distributor B has no direct override, matches DISTRIBUTOR PriceList (₹45.00)
-        price_b = resolve_product_price(distributor_b, product_200g)
-        assert price_b == Decimal("45.00")
+    def test_price_resolution_hierarchy(self):
+        """
+        Tests resolution order:
+        1. CustomerPrice override -> 2. customer_type PriceList -> 3. default PriceList -> 4. list_price.
+        Tier/override rows are set up explicitly in this test fixture.
+        """
+        product_200g = Product.objects.get(item__code="FG-MURUKKU-200G")
+        retailer_a = Customer.objects.get(code="CUST-RETAILER-A")
+        distributor_b = Customer.objects.get(code="CUST-DIST-B")
 
-        # 3. New Retailer C has no custom price and no RETAILER-specific list; falls back to default list (₹50.00)
-        retailer_c = Customer.objects.create(
-            code="CUST-RETAILER-C",
-            name="Retailer C",
-            customer_type="RETAILER",
-            state_code="33",
+        # Baseline: Both resolve to default list price ₹50.00
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("50.00")
+        assert resolve_product_price(distributor_b, product_200g) == Decimal("50.00")
+
+        # 1. Add Distributor tier price list (₹45.00)
+        dist_list = PriceList.objects.create(
+            name="Distributor Tier Price List",
+            customer_type="DISTRIBUTOR",
+            is_default=False,
+            is_active=True,
         )
-        price_c = resolve_product_price(retailer_c, product_200g)
-        assert price_c == Decimal("50.00")
+        PriceListLine.objects.create(
+            price_list=dist_list,
+            product=product_200g,
+            unit_price=Decimal("45.00"),
+        )
+        # Distributor B now gets ₹45.00; Retailer A still gets default ₹50.00
+        assert resolve_product_price(distributor_b, product_200g) == Decimal("45.00")
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("50.00")
 
-        # 4. If removed from all price lists, falls back to product.list_price
+        # 2. Add direct CustomerPrice override for Retailer A (₹48.00)
+        custom_override = CustomerPrice.objects.create(
+            customer=retailer_a,
+            product=product_200g,
+            custom_price=Decimal("48.00"),
+            is_active=True,
+        )
+        # Retailer A now gets ₹48.00 override
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("48.00")
+
+        # 3. If override is deactivated, falls back to default list
+        custom_override.is_active = False
+        custom_override.save()
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("50.00")
+
+        # 4. If all price lists are deleted, falls back to product.list_price
         PriceListLine.objects.filter(product=product_200g).delete()
-        CustomerPrice.objects.filter(product=product_200g).delete()
-
-        price_fallback = resolve_product_price(retailer_c, product_200g)
-        assert price_fallback == Decimal("50.00")
-
-        # 5. Anonymous / None customer falls back to product.list_price
-        price_anon = resolve_product_price(None, product_200g)
-        assert price_anon == Decimal("50.00")
+        assert resolve_product_price(retailer_a, product_200g) == Decimal("50.00")
+        assert resolve_product_price(None, product_200g) == Decimal("50.00")
 
 
 @pytest.mark.django_db
@@ -366,7 +387,6 @@ class TestSeedBenchmarkIdempotency:
     """Verifies seed_benchmark command can be run repeatedly without errors or duplicating data."""
 
     def test_seed_benchmark_is_idempotent(self):
-        # First execution
         call_command("seed_benchmark")
 
         units_count = Unit.objects.count()
@@ -378,10 +398,8 @@ class TestSeedBenchmarkIdempotency:
         suppliers_count = Supplier.objects.count()
         pricelists_count = PriceList.objects.count()
 
-        # Second execution
         call_command("seed_benchmark")
 
-        # Counts must match exactly
         assert Unit.objects.count() == units_count
         assert Item.objects.count() == items_count
         assert Product.objects.count() == products_count
