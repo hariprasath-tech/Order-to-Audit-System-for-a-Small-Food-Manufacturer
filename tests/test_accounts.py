@@ -168,6 +168,13 @@ class TestAccountsRBAC(TestCase):
         response = self.client.get("/production/")
         assert response.status_code == 403
 
+    def test_index_page_redirects_authenticated_user(self):
+        """Authenticated user visiting / is redirected to accounts:role_redirect."""
+        self.client.login(username="sales_rep", password="Password123")
+        response = self.client.get("/")
+        assert response.status_code == 302
+        assert response.url == "/accounts/redirect/"
+
     def test_create_demo_users_command_idempotency(self):
         """Management command create_demo_users creates all 6 demo accounts and is safely idempotent."""
         expected_users = {

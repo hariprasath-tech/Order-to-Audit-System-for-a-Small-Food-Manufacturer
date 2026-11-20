@@ -46,11 +46,16 @@ def offline_fallback_view(request):
 
 def index_view(request):
     """
-    Public entry point rendering the base public landing shell.
+    Public landing entry point.
+    Redirects authenticated users to their role landing screen;
+    renders landing_home.html with brand hero and sign-in button for anonymous visitors.
     """
+    if request.user.is_authenticated:
+        return redirect("accounts:role_redirect")
+
     return render(
         request,
-        "base_public.html",
+        "public/landing_home.html",
         {
             "page_title": "Kaveri Foods | Order-to-Audit System",
         },

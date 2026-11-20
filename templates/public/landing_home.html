@@ -1,0 +1,64 @@
+{% extends "base_public.html" %}
+
+{% block title %}Kaveri Foods | Order-to-Audit Food Manufacturing{% endblock %}
+
+{% block content %}
+<div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 text-center">
+  {# Hero Section #}
+  <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-mono font-medium mb-6">
+    <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+    <span>Production-Grade Traceability &bull; GSTIN 33AAAAA0000A1Z5</span>
+  </div>
+
+  <h1 class="font-serif font-bold text-4xl sm:text-5xl lg:text-6xl text-ink tracking-tight max-w-3xl mx-auto leading-tight">
+    Order-to-Audit System for Small Food Manufacturers
+  </h1>
+
+  <p class="mt-6 text-base sm:text-lg text-ink-muted max-w-2xl mx-auto leading-relaxed">
+    Seamlessly connecting on-field salesman orders, recipe-based production runs, and monthly GST audit reports with single-entry immutable ledger accounting.
+  </p>
+
+  <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+    <a href="{% url 'accounts:login' %}"
+       class="w-full sm:w-auto px-8 py-3.5 bg-brand hover:bg-brand/90 text-white font-medium rounded-lg text-sm transition-all duration-fast shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 flex items-center justify-center gap-2">
+      <span>Sign In to Workspace</span>
+      <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+      </svg>
+    </a>
+  </div>
+
+  {# Three Loop Cards #}
+  <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+    <div class="bg-surface border border-line rounded-xl p-6 shadow-sm">
+      <div class="w-10 h-10 rounded-lg bg-brand/10 text-brand flex items-center justify-center font-mono font-bold text-sm mb-4">
+        01
+      </div>
+      <h3 class="font-serif font-bold text-lg text-ink mb-2">Sales Loop</h3>
+      <p class="text-xs text-ink-muted leading-relaxed">
+        Salesman order entry, admin desk verification, GST invoice printing, and stock dispatch tracking.
+      </p>
+    </div>
+
+    <div class="bg-surface border border-line rounded-xl p-6 shadow-sm">
+      <div class="w-10 h-10 rounded-lg bg-brand-2/20 text-brand-2 flex items-center justify-center font-mono font-bold text-sm mb-4">
+        02
+      </div>
+      <h3 class="font-serif font-bold text-lg text-ink mb-2">Production Loop</h3>
+      <p class="text-xs text-ink-muted leading-relaxed">
+        Raw material purchase, BOM recipe batch issuance, output packet creation, and variance analysis.
+      </p>
+    </div>
+
+    <div class="bg-surface border border-line rounded-xl p-6 shadow-sm">
+      <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-mono font-bold text-sm mb-4">
+        03
+      </div>
+      <h3 class="font-serif font-bold text-lg text-ink mb-2">Audit & GST Loop</h3>
+      <p class="text-xs text-ink-muted leading-relaxed">
+        Stock movements meeting at finished goods stock, powering monthly auditor reports and statutory GSTR summaries.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
