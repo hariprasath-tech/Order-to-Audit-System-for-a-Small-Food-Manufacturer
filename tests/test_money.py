@@ -7,7 +7,7 @@ from decimal import Decimal, getcontext
 
 import pytest
 
-from apps.core.money import money, qty, rate, to_decimal
+from apps.core.money import money, qty, rate, to_decimal, unit_rate
 
 
 class TestMoney:
@@ -29,6 +29,9 @@ class TestMoney:
             qty(19.5)
 
         with pytest.raises(TypeError, match="Float values are strictly prohibited"):
+            unit_rate(0.043125)
+
+        with pytest.raises(TypeError, match="Float values are strictly prohibited"):
             to_decimal(0.005, places=2)
 
     def test_boolean_strictly_rejected(self):
@@ -41,6 +44,9 @@ class TestMoney:
 
         with pytest.raises(TypeError, match="Boolean values cannot be converted"):
             rate(True)
+
+        with pytest.raises(TypeError, match="Boolean values cannot be converted"):
+            unit_rate(True)
 
         with pytest.raises(TypeError, match="Boolean values cannot be converted"):
             qty(False)
@@ -68,11 +74,33 @@ class TestMoney:
         assert money("0.004") == Decimal("0.00")
 
     def test_rate_precision_four_places(self):
-        """Unit costs and rates must preserve 4 decimal places."""
+        """Selling prices and tax rates must preserve 4 decimal places."""
         assert rate("43.125") == Decimal("43.1250")
         assert rate("43.12505") == Decimal("43.1251")
         assert rate("43.12504") == Decimal("43.1250")
         assert rate(140) == Decimal("140.0000")
+
+    def test_unit_rate_precision_eight_places(self):
+        """
+        Base unit inventory costs require 8 decimal places.
+        Verifies exact resolution of weighted-average flour purchases and batch dough cost.
+        """
+        assert unit_rate("0.043125") == Decimal("0.04312500")
+        assert unit_rate("0.043125004") == Decimal("0.04312500")
+        assert unit_rate("0.043125005") == Decimal("0.04312501")
+
+        # Benchmark calculation: 100 kg @ ₹42/kg + 60 kg @ ₹45/kg
+        # In base units: 100,000 g @ 0.042 + 60,000 g @ 0.045 / 160,000 g = 0.043125 exactly
+        avg_rate = (
+            Decimal("100000") * Decimal("0.042") + Decimal("60000") * Decimal("0.045")
+        ) / Decimal("160000")
+        assert avg_rate == Decimal("0.043125")
+        assert unit_rate(avg_rate) == Decimal("0.04312500")
+
+        # 40,000 g flour run at 0.043125 costs exactly ₹1,725.00
+        batch_flour_cost = Decimal("40000") * avg_rate
+        assert batch_flour_cost == Decimal("1725.00")
+        assert money(batch_flour_cost) == Decimal("1725.00")
 
     def test_qty_precision_four_places(self):
         """Inventory quantities must preserve 4 decimal places."""
