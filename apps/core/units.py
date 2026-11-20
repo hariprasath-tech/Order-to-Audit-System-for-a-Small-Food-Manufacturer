@@ -1,6 +1,14 @@
 """
 Unit Conversion Module for Food Factory Inventory.
 Pure Decimal dimensional conversions between mass, volume, and count units.
+
+IMPORTANT ARCHITECTURAL RULE:
+Ledger stock records and inventory ledger movements MUST ALWAYS be stored in
+their canonical base units (e.g. grams for mass, millilitres for volume, pieces for count).
+Conversions (such as grams to kilograms for UI displays or invoices) are presentation-only.
+Never convert quantities to a higher unit and then store back to the database,
+as quantizing intermediate values to 4 decimal places can cause truncation loss
+for sub-fractional quantities.
 """
 
 from decimal import Decimal
