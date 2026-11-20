@@ -3,6 +3,9 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["tests"]
 addopts = "-v --strict-markers --tb=short"
+markers = [
+    "requires_postgres: mark test as requiring a live PostgreSQL database",
+]
 
 [tool.ruff]
 line-length = 100

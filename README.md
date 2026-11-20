@@ -87,10 +87,21 @@ docker compose down -v && docker compose up --build
 
 ### Running without Docker (optional)
 
+> [!IMPORTANT]
+> **Python Version & Development Environment:**
+> Always develop on **Python 3.12** (pinned via `.python-version` and the production `Dockerfile`).
+> The application uses PostgreSQL-specific locking and triggers; all tests should be executed against the PostgreSQL container:
+> ```bash
+> make test
+> # or
+> docker compose exec web pytest -v
+> ```
+
 ```bash
+# If developing locally on Python 3.12:
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-export DATABASE_URL=postgres://user:pass@localhost:5432/snackfactory
+export DATABASE_URL=postgres://snackuser:snackpass@localhost:5432/snackfactory
 python manage.py migrate
 python manage.py seed_benchmark
 python manage.py runserver

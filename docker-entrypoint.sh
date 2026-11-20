@@ -4,7 +4,6 @@ set -euo pipefail
 echo "[Entrypoint] Waiting for database connection..."
 python -c "
 import time, os, sys
-from urllib.parse import urlparse
 
 db_url = os.environ.get('DATABASE_URL')
 if not db_url:
@@ -34,7 +33,7 @@ python manage.py collectstatic --noinput
 
 if [ "${SEED_ON_START:-false}" = "true" ]; then
     echo "[Entrypoint] SEED_ON_START is true. Seeding benchmark master data..."
-    python manage.py seed_benchmark || echo "[Entrypoint] Seed benchmark not yet implemented, continuing."
+    python manage.py seed_benchmark
 fi
 
 echo "[Entrypoint] Executing command: $@"

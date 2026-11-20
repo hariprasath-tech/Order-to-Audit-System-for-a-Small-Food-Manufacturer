@@ -8,17 +8,13 @@ from decimal import Decimal
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project: BASE_DIR is the repository root
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from .env file if present
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(BASE_DIR / ".env")
-except ImportError:
-    pass
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / ".env")
 
 # Core Security Settings - Strictly required from environment (no insecure defaults)
 if "SECRET_KEY" not in os.environ:
@@ -28,10 +24,20 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # DEBUG defaults to False for production safety
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
 
+# HTTPS / SSL configuration
+USE_HTTPS = os.environ.get("USE_HTTPS", "False").lower() in ("true", "1", "t")
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,web,0.0.0.0").split(",")
     if host.strip()
+]
+
+# CSRF Trusted Origins for reverse proxies and HTTPS deployments
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 # Application Definition
@@ -137,12 +143,18 @@ STORAGES = {
     },
 }
 
-# Production Security Headers & Cookies (Active when DEBUG is False)
+# SSL & Security Headers
+if USE_HTTPS:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = "DENY"
 
 # Default primary key field type
