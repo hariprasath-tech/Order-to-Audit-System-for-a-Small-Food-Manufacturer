@@ -96,6 +96,14 @@ docker compose down -v && docker compose up --build
 > # or
 > docker compose exec web pytest -v
 > ```
+> To run pytest directly on the host machine against PostgreSQL:
+> ```bash
+> # 1. Spin up only the PostgreSQL database container:
+> docker compose up -d db
+> # 2. Export local PostgreSQL connection and run pytest:
+> export DATABASE_URL="postgres://snackuser:snackpass@localhost:5432/snackfactory"
+> pytest -v
+> ```
 
 ```bash
 # If developing locally on Python 3.12:

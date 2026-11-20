@@ -24,6 +24,9 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # DEBUG defaults to False for production safety
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
 
+# Demo Mode flag: displays helper credentials and role quick-links on the login screen
+DEMO_MODE = os.environ.get("DEMO_MODE", "False").lower() in ("true", "1", "t")
+
 # HTTPS / SSL configuration
 USE_HTTPS = os.environ.get("USE_HTTPS", "False").lower() in ("true", "1", "t")
 
@@ -142,18 +145,20 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+# Tolerate missing optional vendor sourcemaps without breaking collectstatic
+WHITENOISE_MANIFEST_STRICT = False
 
 # SSL & Security Headers
 if USE_HTTPS:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
 if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
 
