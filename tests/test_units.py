@@ -63,3 +63,21 @@ class TestUnits:
         """Hypothesis property test: round-trip conversion (l -> ml -> l) preserves exact quantity."""
         converted = convert(convert(q, "l", "ml"), "ml", "l")
         assert converted == q
+
+    def test_gram_to_kg_roundtrip_precision_loss_documentation(self):
+        """
+        Documents why ledger balances must ALWAYS be stored in base units (grams) rather than higher units (kg):
+        Quantizing to 4 decimal places means 0.0001 kg = 0.1 g.
+        Sub-0.1g quantities (e.g. 0.05g) quantized in kg round to 0.0001 kg,
+        which when converted back yields 0.1000g instead of the original 0.0500g.
+        Storing exclusively in base units avoids this precision loss.
+        """
+        sub_fractional_grams = Decimal("0.0500")  # 50 milligrams
+        # 0.0500 / 1000 = 0.00005, which quantizes to 0.0001 with ROUND_HALF_UP at 4 decimal places
+        kg = convert(sub_fractional_grams, "g", "kg")
+        assert kg == Decimal("0.0001")
+
+        # Converting that 0.0001 kg back to grams yields 0.1000g:
+        roundtrip_grams = convert(kg, "kg", "g")
+        assert roundtrip_grams == Decimal("0.1000")
+        assert roundtrip_grams != sub_fractional_grams

@@ -3,6 +3,7 @@ Pytest configuration and environment defaults for test execution.
 """
 
 import os
+
 import pytest
 from django.db import connection
 

@@ -1,5 +1,5 @@
 """
-Unit tests for Role-Based Access Control, Authentication, and Role Routing.
+Unit tests for Role-Based Access Control, Authentication, Role Landings, and Role Routing.
 """
 
 import pytest
@@ -43,6 +43,19 @@ class TestAccountsRBAC(TestCase):
 
         self.admin_user = User.objects.create_user(username="factory_admin", password="Password123")
         self.admin_user.groups.add(self.groups["admin_desk"])
+
+        self.production_user = User.objects.create_user(
+            username="prod_supervisor", password="Password123"
+        )
+        self.production_user.groups.add(self.groups["production"])
+
+        self.accountant_user = User.objects.create_user(
+            username="factory_accountant", password="Password123"
+        )
+        self.accountant_user.groups.add(self.groups["accountant"])
+
+        self.owner_user = User.objects.create_user(username="factory_owner", password="Password123")
+        self.owner_user.groups.add(self.groups["owner"])
 
         self.unassigned = User.objects.create_user(username="no_role_user", password="Password123")
 
@@ -91,6 +104,21 @@ class TestAccountsRBAC(TestCase):
         assert response.status_code == 302
         assert response.url == "/admin-desk/"
 
+        request.user = self.production_user
+        response = role_redirect_view(request)
+        assert response.status_code == 302
+        assert response.url == "/production/"
+
+        request.user = self.accountant_user
+        response = role_redirect_view(request)
+        assert response.status_code == 302
+        assert response.url == "/reports/"
+
+        request.user = self.owner_user
+        response = role_redirect_view(request)
+        assert response.status_code == 302
+        assert response.url == "/dashboard/"
+
     def test_post_only_logout(self):
         """Logout endpoint must reject GET with 405 and succeed on POST."""
         get_response = self.client.get("/accounts/logout/")
@@ -100,3 +128,27 @@ class TestAccountsRBAC(TestCase):
         post_response = self.client.post("/accounts/logout/")
         assert post_response.status_code == 302
         assert post_response.url == "/accounts/login/"
+
+    def test_login_page_renders_form(self):
+        """Login page must render working username and password form with role credentials hint."""
+        response = self.client.get("/accounts/login/")
+        assert response.status_code == 200
+        assert "username" in response.content.decode()
+        assert "password" in response.content.decode()
+        assert "Role Test Logins" in response.content.decode()
+
+    def test_role_landing_page_authorized_and_logout_form(self):
+        """Authorized user gets 200 on their role workspace with data-logout sign out button."""
+        self.client.login(username="sales_rep", password="Password123")
+        response = self.client.get("/salesman/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Salesman Order Entry" in content
+        assert "data-logout" in content
+
+    def test_role_landing_page_unauthorized_raises_403(self):
+        """User accessing wrong role workspace must be denied with HTTP 403."""
+        self.client.login(username="sales_rep", password="Password123")
+        # Salesman attempting to access production workspace
+        response = self.client.get("/production/")
+        assert response.status_code == 403

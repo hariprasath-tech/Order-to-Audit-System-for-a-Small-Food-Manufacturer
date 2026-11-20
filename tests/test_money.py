@@ -1,9 +1,9 @@
 """
 Unit tests for core monetary and decimal arithmetic.
-Strictly verifies float rejection and statutory ROUND_HALF_UP accuracy.
+Strictly verifies float rejection, boolean rejection, non-finite rejection, and statutory ROUND_HALF_UP accuracy.
 """
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
 
 import pytest
 
@@ -11,7 +11,11 @@ from apps.core.money import money, qty, rate, to_decimal
 
 
 class TestMoney:
-    """Verifies currency conversion, precision, and float rejection."""
+    """Verifies currency conversion, precision, context, and input type rejections."""
+
+    def test_decimal_context_precision(self):
+        """Module-level decimal context must be initialized to 28 digits."""
+        assert getcontext().prec == 28
 
     def test_float_strictly_rejected(self):
         """Float inputs must immediately raise TypeError."""
@@ -26,6 +30,34 @@ class TestMoney:
 
         with pytest.raises(TypeError, match="Float values are strictly prohibited"):
             to_decimal(0.005, places=2)
+
+    def test_boolean_strictly_rejected(self):
+        """Boolean values (subclass of int) must raise TypeError."""
+        with pytest.raises(TypeError, match="Boolean values cannot be converted"):
+            money(True)
+
+        with pytest.raises(TypeError, match="Boolean values cannot be converted"):
+            money(False)
+
+        with pytest.raises(TypeError, match="Boolean values cannot be converted"):
+            rate(True)
+
+        with pytest.raises(TypeError, match="Boolean values cannot be converted"):
+            qty(False)
+
+    def test_non_finite_rejected(self):
+        """NaN and Infinity must raise ValueError."""
+        with pytest.raises(ValueError, match="Non-finite decimal values"):
+            money("NaN")
+
+        with pytest.raises(ValueError, match="Non-finite decimal values"):
+            money(Decimal("NaN"))
+
+        with pytest.raises(ValueError, match="Non-finite decimal values"):
+            rate("Infinity")
+
+        with pytest.raises(ValueError, match="Non-finite decimal values"):
+            qty("-Infinity")
 
     def test_round_half_up_exactness(self):
         """Statutory half-up rounding boundary checks."""

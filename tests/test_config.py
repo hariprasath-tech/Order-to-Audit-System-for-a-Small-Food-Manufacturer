@@ -1,6 +1,6 @@
 """
 Configuration and Root Routing Test Suite for Order-to-Audit System.
-Verifies directory bindings, statutory settings, and PWA endpoints.
+Verifies directory bindings, statutory settings, HTTPS flags, and PWA endpoints.
 """
 
 from decimal import Decimal
@@ -31,6 +31,11 @@ class ConfigurationTests(SimpleTestCase):
         self.assertEqual(settings.SELLER_GSTIN, "33AAAAA0000A1Z5")
         self.assertEqual(settings.DEFAULT_VARIANCE_TOLERANCE, Decimal("3.00"))
         self.assertIsInstance(settings.DEFAULT_VARIANCE_TOLERANCE, Decimal)
+
+    def test_https_and_csrf_settings(self):
+        """Verifies USE_HTTPS and CSRF_TRUSTED_ORIGINS settings exist and behave correctly."""
+        self.assertIsInstance(settings.USE_HTTPS, bool)
+        self.assertIsInstance(settings.CSRF_TRUSTED_ORIGINS, list)
 
 
 class RootRoutingTests(SimpleTestCase):
