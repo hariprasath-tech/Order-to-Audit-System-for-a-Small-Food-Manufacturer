@@ -1,6 +1,6 @@
 """
 URL configuration for Order-to-Audit System.
-Provides root routing, static asset finding for /sw.js, and offline fallback.
+Merges PWA Service Worker, offline fallback, public landing, and admin routing.
 """
 import os
 from django.conf import settings
@@ -37,11 +37,24 @@ def offline_fallback_view(request):
     """
     return render(request, 'offline.html')
 
+def index_view(request):
+    """
+    Public entry point rendering the base public landing shell.
+    """
+    return render(request, 'base_public.html', {
+        'page_title': 'Kaveri Foods | Order-to-Audit System',
+    })
+
 urlpatterns = [
+    # Public Landing Page
+    path('', index_view, name='index'),
+
     # PWA Service Worker served at domain root with Service-Worker-Allowed: /
     path('sw.js', service_worker_view, name='service_worker'),
+
     # PWA Offline Navigation Fallback
     path('offline/', offline_fallback_view, name='offline'),
-    # Django Admin
+
+    # Django Administration Interface
     path('admin/', admin.site.urls),
 ]
