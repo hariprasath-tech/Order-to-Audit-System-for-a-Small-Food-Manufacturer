@@ -1,6 +1,6 @@
 """
 URL configuration for Order-to-Audit System.
-Merges PWA Service Worker, offline fallback, public landing, healthcheck, and accounts routing.
+Merges PWA Service Worker, offline fallback, public landing, healthcheck, accounts, and role landing routes.
 """
 
 import os
@@ -13,7 +13,7 @@ from django.shortcuts import render
 from django.urls import include, path
 from django.views.decorators.cache import cache_control
 
-from apps.accounts.views import healthz
+from apps.accounts import views as account_views
 
 
 @cache_control(max_age=0, no_cache=True, must_revalidate=True)
@@ -59,11 +59,17 @@ def index_view(request):
 
 urlpatterns = [
     # Healthcheck Endpoint (Docker Compose & Monitoring)
-    path("healthz", healthz, name="root_healthz"),
+    path("healthz", account_views.healthz, name="root_healthz"),
     # Public Landing Page
     path("", index_view, name="index"),
     # Authentication & Accounts
     path("accounts/", include("apps.accounts.urls", namespace="accounts")),
+    # Role Landing Workspaces (protected via @role_required)
+    path("salesman/", account_views.salesman_landing_view, name="salesman_landing"),
+    path("admin-desk/", account_views.admin_desk_landing_view, name="admin_desk_landing"),
+    path("production/", account_views.production_landing_view, name="production_landing"),
+    path("reports/", account_views.reports_landing_view, name="reports_landing"),
+    path("dashboard/", account_views.dashboard_landing_view, name="dashboard_landing"),
     # PWA Service Worker served at domain root with Service-Worker-Allowed: /
     path("sw.js", service_worker_view, name="service_worker"),
     # PWA Offline Navigation Fallback

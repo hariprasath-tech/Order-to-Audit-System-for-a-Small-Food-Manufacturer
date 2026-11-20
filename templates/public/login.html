@@ -1,0 +1,78 @@
+{% extends "base_public.html" %}
+
+{% block title %}Sign In | Kaveri Foods Order-to-Audit{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4 py-8">
+  <div class="bg-surface border border-line rounded-xl shadow-lg p-6 sm:p-8">
+    <div class="mb-6 text-center">
+      <div class="inline-flex w-12 h-12 rounded-lg bg-brand/10 text-brand items-center justify-center border border-brand/20 mb-3">
+        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 5a7 7 0 1 0 7 7" />
+          <path d="M12 1a11 11 0 1 0 11 11" />
+        </svg>
+      </div>
+      <h1 class="font-serif font-bold text-2xl text-ink tracking-tight">Kaveri Foods</h1>
+      <p class="text-sm text-ink-muted mt-1">Order-to-Audit Factory Management</p>
+    </div>
+
+    {% if form.errors %}
+      <div class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        {% else %}
+          <p>Invalid credentials. Please verify your username and password.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'accounts:login' %}" class="space-y-4">
+      {% csrf_token %}
+
+      <div>
+        <label for="id_username" class="block text-xs font-semibold text-ink uppercase tracking-wider mb-1">
+          Username
+        </label>
+        <input type="text"
+               name="username"
+               id="id_username"
+               required
+               autocomplete="username"
+               autofocus
+               class="w-full px-3 py-2 text-sm bg-bg border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors">
+      </div>
+
+      <div>
+        <label for="id_password" class="block text-xs font-semibold text-ink uppercase tracking-wider mb-1">
+          Password
+        </label>
+        <input type="password"
+               name="password"
+               id="id_password"
+               required
+               autocomplete="current-password"
+               class="w-full px-3 py-2 text-sm bg-bg border border-line rounded-lg text-ink focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors">
+      </div>
+
+      <button type="submit"
+              class="w-full py-2.5 px-4 bg-brand hover:bg-brand/90 text-white font-medium rounded-lg text-sm transition-colors duration-fast shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2">
+        Sign in to Account
+      </button>
+    </form>
+
+    <div class="mt-6 pt-5 border-t border-line">
+      <h2 class="text-xs font-mono font-semibold text-ink-muted uppercase tracking-wider mb-2">Role Test Logins</h2>
+      <div class="text-xs font-mono space-y-1 text-ink-muted bg-surface-2 p-3 rounded-lg border border-line/60">
+        <div><span class="text-brand font-bold">Salesman:</span> salesman_a / Demo@1234</div>
+        <div><span class="text-brand font-bold">Admin Desk:</span> admin_user / Demo@1234</div>
+        <div><span class="text-brand font-bold">Production:</span> production / Demo@1234</div>
+        <div><span class="text-brand font-bold">Accountant:</span> accountant / Demo@1234</div>
+        <div><span class="text-brand font-bold">Owner:</span> owner / Demo@1234</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

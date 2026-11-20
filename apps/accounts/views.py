@@ -1,6 +1,8 @@
 """
-Authentication, Role-Based Redirection, and Healthcheck Views.
+Authentication, Role-Based Redirection, Role Landings, and Healthcheck Views.
 """
+
+import logging
 
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
@@ -10,6 +12,10 @@ from django.db import connection
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+
+from apps.accounts.decorators import role_required
+
+logger = logging.getLogger(__name__)
 
 # Role to landing page route mapping
 ROLE_LANDING_PAGES = {
@@ -40,7 +46,7 @@ def login_view(request):
 
     return render(
         request,
-        "public/login.html" if False else "base_public.html",
+        "public/login.html",
         {
             "form": form,
             "page_title": "Sign In | Kaveri Foods",
@@ -76,11 +82,82 @@ def role_redirect_view(request):
     return redirect("/")
 
 
+# Role-Protected Landing Views
+@role_required("salesman")
+def salesman_landing_view(request):
+    return render(
+        request,
+        "roles/landing.html",
+        {
+            "role_code": "salesman",
+            "role_display": "Salesman Order Entry",
+            "role_description": "Mobile order entry portal for on-field sales representatives. Quick catalog lookup, draft orders, and offline queueing.",
+            "page_title": "Salesman Orders | Kaveri Foods",
+        },
+    )
+
+
+@role_required("admin_desk")
+def admin_desk_landing_view(request):
+    return render(
+        request,
+        "roles/landing.html",
+        {
+            "role_code": "admin_desk",
+            "role_display": "Admin Desk Inbox",
+            "role_description": "Factory order verification, dispatch generation, GST invoice printing, and stock allocation.",
+            "page_title": "Admin Desk | Kaveri Foods",
+        },
+    )
+
+
+@role_required("production")
+def production_landing_view(request):
+    return render(
+        request,
+        "roles/landing.html",
+        {
+            "role_code": "production",
+            "role_display": "Production Run Manager",
+            "role_description": "Raw material batch issuance against recipe BOMs, yield tracking, variance calculations, and finished good packing.",
+            "page_title": "Production | Kaveri Foods",
+        },
+    )
+
+
+@role_required("accountant")
+def reports_landing_view(request):
+    return render(
+        request,
+        "roles/landing.html",
+        {
+            "role_code": "accountant",
+            "role_display": "Auditor & Accounting Reports",
+            "role_description": "Monthly GST reports (GSTR-1, GSTR-3B summaries), immutable stock ledgers, production cost analyses, and debtor balances.",
+            "page_title": "Reports | Kaveri Foods",
+        },
+    )
+
+
+@role_required("owner")
+def dashboard_landing_view(request):
+    return render(
+        request,
+        "roles/landing.html",
+        {
+            "role_code": "owner",
+            "role_display": "Owner Executive Dashboard",
+            "role_description": "High-level operations overview, financial summaries, production run variance alerts, and collection status.",
+            "page_title": "Dashboard | Kaveri Foods",
+        },
+    )
+
+
 def healthz(request):
     """
     Production healthcheck endpoint.
     Executes a heartbeat query against the PostgreSQL database.
-    Returns 200 OK or 503 Service Unavailable.
+    Returns 200 OK or 503 Service Unavailable without exposing internal exception strings.
     """
     try:
         with connection.cursor() as cursor:
@@ -89,5 +166,6 @@ def healthz(request):
             if not row or row[0] != 1:
                 raise RuntimeError("Database heartbeat query returned unexpected result.")
         return JsonResponse({"status": "ok", "database": "connected"}, status=200)
-    except Exception as e:
-        return JsonResponse({"status": "error", "database": str(e)}, status=503)
+    except Exception:
+        logger.exception("Healthcheck failure: unable to communicate with database.")
+        return JsonResponse({"status": "error"}, status=503)

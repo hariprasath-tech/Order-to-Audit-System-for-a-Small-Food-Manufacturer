@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ role_display }} | Kaveri Foods Order-to-Audit{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8 w-full">
+  <div class="bg-surface border border-line rounded-xl p-6 sm:p-8 shadow-sm">
+    <div class="flex items-center justify-between border-b border-line pb-4 mb-6">
+      <div>
+        <span class="text-xs font-mono uppercase tracking-wider text-brand font-semibold">{{ role_code }} Workspace</span>
+        <h1 class="text-2xl font-serif font-bold text-ink mt-1">{{ role_display }}</h1>
+      </div>
+      <form method="post" action="{% url 'accounts:logout' %}" data-logout>
+        {% csrf_token %}
+        <button type="submit"
+                class="px-4 py-2 text-xs font-mono font-medium rounded-lg bg-surface-2 hover:bg-red-500/10 text-ink hover:text-red-500 border border-line transition-colors">
+          Sign out
+        </button>
+      </form>
+    </div>
+
+    <div class="prose dark:prose-invert max-w-none text-sm text-ink-muted mb-6">
+      <p>{{ role_description }}</p>
+    </div>
+
+    <div class="p-4 rounded-lg bg-surface-2 border border-line text-xs font-mono text-ink-muted flex items-center justify-between">
+      <span>Logged in as: <strong class="text-ink">{{ user.username }}</strong></span>
+      <span>Role: <span class="text-brand font-semibold">{{ role_code }}</span></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
