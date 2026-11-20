@@ -31,9 +31,12 @@ python manage.py migrate --noinput
 echo "[Entrypoint] Collecting static files..."
 python manage.py collectstatic --noinput
 
-if [ "${SEED_ON_START:-false}" = "true" ]; then
-    echo "[Entrypoint] SEED_ON_START is true. Creating benchmark demo users..."
+if [ "${DEMO_MODE:-false}" = "true" ]; then
+    echo "[Entrypoint] DEMO_MODE is true. Creating demo users..."
     python manage.py create_demo_users
+fi
+
+if [ "${SEED_ON_START:-false}" = "true" ]; then
     echo "[Entrypoint] Seeding benchmark master data..."
     python manage.py seed_benchmark
 fi
