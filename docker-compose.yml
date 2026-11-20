@@ -1,0 +1,42 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-dev-key-docker-compose-snackfactory
+      - ALLOWED_HOSTS=localhost,127.0.0.1,web,0.0.0.0
+      - DATABASE_URL=postgres://snackuser:snackpass@db:5432/snackfactory
+      - SELLER_NAME=Kaveri Foods Mfg Ltd
+      - SELLER_GSTIN=33AAAAA0000A1Z5
+      - SELLER_STATE_CODE=33
+      - DEFAULT_VARIANCE_TOLERANCE=3.0
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=snackfactory
+      - POSTGRES_USER=snackuser
+      - POSTGRES_PASSWORD=snackpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snackuser -d snackfactory"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:

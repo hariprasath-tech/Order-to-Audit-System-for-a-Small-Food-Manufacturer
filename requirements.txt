@@ -1,0 +1,20 @@
+# Django Core
+Django>=5.0.0,<5.2.0
+gunicorn>=21.2.0
+
+# Database & Environment Configuration
+psycopg[binary]>=3.1.18
+dj-database-url>=2.1.0
+python-dotenv>=1.0.1
+
+# Audit Logging & Model History
+django-simple-history>=3.5.0
+
+# PDF & Excel Exporting
+weasyprint>=61.0
+openpyxl>=3.1.2
+
+# Testing & Quality
+pytest>=8.0.0
+pytest-django>=4.8.0
+pytest-cov>=4.1.0

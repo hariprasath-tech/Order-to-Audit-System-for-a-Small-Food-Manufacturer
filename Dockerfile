@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies for PostgreSQL and WeasyPrint (Pango, Cairo, GDK-PixBuf)
+# Install system dependencies for PostgreSQL, WeasyPrint, and system fonts
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -23,11 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf2.0-0 \
     libffi-dev \
     shared-mime-info \
+    fonts-dejavu-core \
+    fonts-liberation \
+    fonts-noto-core \
+    fontconfig \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python requirements if present
-COPY requirements.txt* ./
-RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+# Install Python requirements
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

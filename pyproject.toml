@@ -1,0 +1,20 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_test.py"]
+testpaths = ["tests"]
+addopts = "-v --strict-markers --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    "node_modules",
+    "staticfiles",
+    "static/dist",
+    "static/vendor",
+    "migrations"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
