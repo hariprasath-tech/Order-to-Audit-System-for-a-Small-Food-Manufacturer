@@ -1,8 +1,9 @@
 """
 Management command to seed idempotent benchmark master data for Murukku food factory.
-Seeds Units, the 5 core Items, Murukku 200g Product, 40kg/200pkt BOM,
-Customers (Retailer A, Distributor B), Suppliers, and Price Lists.
+Seeds the 5 core Items with standard_rate (8 dp), Murukku 200g Product, 40kg shared BOM,
+Customers (Retailer A, Distributor B), Suppliers, and default Price List (₹50.00 for all).
 Also invokes create_demo_users.
+Units are seeded by data migration 0002_seed_units (single source of truth).
 DOES NOT seed opening inventory balances (opening stock belongs to Phase 3 ledger).
 """
 
@@ -13,7 +14,6 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from apps.core.units import UNIT_DEFINITIONS
 from apps.masters.models import (
     BOM,
     BOMLine,
@@ -31,7 +31,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Idempotently seeds benchmark master data (units, items, BOM, customers, suppliers, price lists)."
+    help = "Idempotently seeds benchmark master data (items, shared BOM, customers, suppliers, price lists)."
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -41,38 +41,19 @@ class Command(BaseCommand):
         salesman_a = User.objects.filter(username="salesman_a").first()
         salesman_b = User.objects.filter(username="salesman_b").first()
 
-        self.stdout.write(self.style.NOTICE("==> Seeding Units of Measure..."))
-        canonical_units = {
-            "g": ("Gram", "mass", Decimal("1.0000"), True),
-            "kg": ("Kilogram", "mass", Decimal("1000.0000"), False),
-            "ml": ("Millilitre", "volume", Decimal("1.0000"), True),
-            "l": ("Litre", "volume", Decimal("1000.0000"), False),
-            "pc": ("Piece", "count", Decimal("1.0000"), True),
-            "packet": ("Packet", "count", Decimal("1.0000"), False),
-            "pouch": ("Pouch", "count", Decimal("1.0000"), False),
-        }
-        for code, (name, kind, factor, is_base) in canonical_units.items():
-            if code in UNIT_DEFINITIONS:
-                _, def_factor = UNIT_DEFINITIONS[code]
-                factor = def_factor
-            Unit.objects.update_or_create(
-                code=code,
-                defaults={
-                    "name": name,
-                    "kind": kind,
-                    "factor_to_base": factor,
-                    "is_base": is_base,
-                },
-            )
-
+        self.stdout.write(
+            self.style.NOTICE("==> Retrieving Units of Measure (seeded via migration)...")
+        )
         u_g = Unit.objects.get(code="g")
         u_kg = Unit.objects.get(code="kg")
         u_ml = Unit.objects.get(code="ml")
         u_l = Unit.objects.get(code="l")
         u_pc = Unit.objects.get(code="pc")
 
-        self.stdout.write(self.style.NOTICE("==> Seeding 5 Core Items & Valuation Rates..."))
-        # 1. Flour Blend (Raw Material)
+        self.stdout.write(
+            self.style.NOTICE("==> Seeding 5 Core Items & Standard Rates (8 decimal places)...")
+        )
+        # 1. Flour Blend (Raw Material: ₹42.00 / kg -> 0.04200000 / g)
         flour, _ = Item.objects.update_or_create(
             code="RAW-FLOUR",
             defaults={
@@ -83,12 +64,12 @@ class Command(BaseCommand):
                 "gst_rate": Decimal("5.00"),
                 "tolerance_pct": Decimal("3.00"),
                 "reorder_level": Decimal("50000.0000"),  # 50 kg
-                "valuation_rate": Decimal("0.0420"),  # ₹42.00 / kg
+                "standard_rate": Decimal("0.04200000"),  # ₹0.04200000 / g
                 "is_active": True,
             },
         )
 
-        # 2. Refined Cooking Oil (Raw Material)
+        # 2. Refined Cooking Oil (Raw Material: ₹140.00 / L -> 0.14000000 / ml)
         oil, _ = Item.objects.update_or_create(
             code="RAW-OIL",
             defaults={
@@ -99,12 +80,12 @@ class Command(BaseCommand):
                 "gst_rate": Decimal("5.00"),
                 "tolerance_pct": Decimal("3.00"),
                 "reorder_level": Decimal("20000.0000"),  # 20 L
-                "valuation_rate": Decimal("0.1400"),  # ₹140.00 / L
+                "standard_rate": Decimal("0.14000000"),  # ₹0.14000000 / ml
                 "is_active": True,
             },
         )
 
-        # 3. Spice Mix (Raw Material)
+        # 3. Spice Mix (Raw Material: ₹200.00 / kg -> 0.20000000 / g)
         spice, _ = Item.objects.update_or_create(
             code="RAW-SPICE",
             defaults={
@@ -115,12 +96,12 @@ class Command(BaseCommand):
                 "gst_rate": Decimal("5.00"),
                 "tolerance_pct": Decimal("3.00"),
                 "reorder_level": Decimal("5000.0000"),  # 5 kg
-                "valuation_rate": Decimal("0.2000"),  # ₹200.00 / kg
+                "standard_rate": Decimal("0.20000000"),  # ₹0.20000000 / g
                 "is_active": True,
             },
         )
 
-        # 4. 200g Printed Pouch (Packaging Material)
+        # 4. 200g Printed Pouch (Packaging Material: ₹2.50000000 / pc)
         pouch, _ = Item.objects.update_or_create(
             code="PKG-POUCH-200G",
             defaults={
@@ -131,12 +112,12 @@ class Command(BaseCommand):
                 "gst_rate": Decimal("18.00"),
                 "tolerance_pct": Decimal("3.00"),
                 "reorder_level": Decimal("1000.0000"),  # 1,000 pouches
-                "valuation_rate": Decimal("2.5000"),  # ₹2.50 / pc
+                "standard_rate": Decimal("2.50000000"),  # ₹2.50000000 / pc
                 "is_active": True,
             },
         )
 
-        # 5. Shipper Carton (Packaging Material)
+        # 5. Shipper Carton (Packaging Material: ₹15.00000000 / pc)
         carton, _ = Item.objects.update_or_create(
             code="PKG-CARTON",
             defaults={
@@ -147,10 +128,39 @@ class Command(BaseCommand):
                 "gst_rate": Decimal("18.00"),
                 "tolerance_pct": Decimal("3.00"),
                 "reorder_level": Decimal("100.0000"),  # 100 cartons
-                "valuation_rate": Decimal("15.0000"),  # ₹15.00 / pc
+                "standard_rate": Decimal("15.00000000"),  # ₹15.00000000 / pc
                 "is_active": True,
             },
         )
+
+        self.stdout.write(
+            self.style.NOTICE("==> Seeding Master BOM ('Murukku Classic', 40kg dough yield)...")
+        )
+        bom, _ = BOM.objects.update_or_create(
+            name="Murukku Classic",
+            version=1,
+            defaults={
+                "batch_output_g": Decimal("40000.00"),
+                "is_active": True,
+            },
+        )
+
+        # Shared dough raw material lines (product is None: identical for all products using this BOM)
+        shared_components = [
+            (flour, Decimal("40000.0000"), u_kg),  # 40,000 g (40 kg)
+            (oil, Decimal("10000.0000"), u_l),  # 10,000 ml (10 L)
+            (spice, Decimal("1200.0000"), u_g),  # 1,200 g (1.2 kg)
+        ]
+        for item, qty_base, display_unit in shared_components:
+            BOMLine.objects.update_or_create(
+                bom=bom,
+                product=None,
+                item=item,
+                defaults={
+                    "qty_base": qty_base,
+                    "display_unit": display_unit,
+                },
+            )
 
         self.stdout.write(self.style.NOTICE("==> Seeding Finished Product (Murukku 200g)..."))
         fg_item, _ = Item.objects.update_or_create(
@@ -162,7 +172,7 @@ class Command(BaseCommand):
                 "hsn_code": "2106",
                 "gst_rate": Decimal("5.00"),
                 "tolerance_pct": Decimal("3.00"),
-                "valuation_rate": Decimal("0.0000"),  # Calculated per production batch
+                "standard_rate": Decimal("0.00000000"),
                 "is_active": True,
             },
         )
@@ -170,34 +180,22 @@ class Command(BaseCommand):
         product_200g, _ = Product.objects.update_or_create(
             item=fg_item,
             defaults={
+                "bom": bom,
                 "pack_size_g": Decimal("200.00"),
                 "packets_per_carton": 20,
-                "list_price": Decimal("50.00"),
+                "list_price": Decimal("50.00"),  # Benchmark list price: ₹50.00 before tax
             },
         )
 
-        self.stdout.write(self.style.NOTICE("==> Seeding BOM (200 pkts/batch, 40kg yield)..."))
-        bom, _ = BOM.objects.update_or_create(
-            product=product_200g,
-            version=1,
-            defaults={
-                "batch_output_packets": 200,
-                "recipe_group": "MURUKKU_CLASSIC",
-                "yield_basis": Decimal("40.00"),
-                "is_active": True,
-            },
-        )
-
-        bom_components = [
-            (flour, Decimal("40000.0000"), u_kg),  # 40,000 g (40 kg)
-            (oil, Decimal("10000.0000"), u_l),  # 10,000 ml (10 L)
-            (spice, Decimal("1200.0000"), u_g),  # 1,200 g (1.2 kg)
-            (pouch, Decimal("200.0000"), u_pc),  # 200 pouches
-            (carton, Decimal("10.0000"), u_pc),  # 10 shipper cartons (20 pkts/carton)
+        # Product-specific packaging lines for 200g product (200 pkts / batch)
+        product_packaging_components = [
+            (pouch, Decimal("200.0000"), u_pc),  # 200 pouches for 200 pkts
+            (carton, Decimal("10.0000"), u_pc),  # 10 cartons (20 pkts/carton)
         ]
-        for item, qty_base, display_unit in bom_components:
+        for item, qty_base, display_unit in product_packaging_components:
             BOMLine.objects.update_or_create(
                 bom=bom,
+                product=product_200g,
                 item=item,
                 defaults={
                     "qty_base": qty_base,
@@ -273,8 +271,10 @@ class Command(BaseCommand):
             },
         )
 
-        self.stdout.write(self.style.NOTICE("==> Seeding Price Lists & Overrides..."))
-        # Standard Price List (Applicable to ALL, default)
+        self.stdout.write(
+            self.style.NOTICE("==> Seeding Standard Price List (₹50.00 for EVERY customer)...")
+        )
+        # Standard Price List (Applicable to ALL customers, default)
         std_list, _ = PriceList.objects.update_or_create(
             name="Standard Wholesale Price List",
             defaults={
@@ -289,30 +289,10 @@ class Command(BaseCommand):
             defaults={"unit_price": Decimal("50.00")},
         )
 
-        # Distributor Tier Price List (Tiered volume discount: ₹45.00/pkt)
-        dist_list, _ = PriceList.objects.update_or_create(
-            name="Distributor Tier Price List",
-            defaults={
-                "customer_type": "DISTRIBUTOR",
-                "is_default": False,
-                "is_active": True,
-            },
-        )
-        PriceListLine.objects.update_or_create(
-            price_list=dist_list,
-            product=product_200g,
-            defaults={"unit_price": Decimal("45.00")},
-        )
-
-        # Negotiated direct override for Retailer A (₹48.00/pkt)
-        CustomerPrice.objects.update_or_create(
-            customer=retailer_a,
-            product=product_200g,
-            defaults={
-                "custom_price": Decimal("48.00"),
-                "is_active": True,
-            },
-        )
+        # Benchmark pricing rule: Murukku 200g is ₹50.00 for EVERY customer.
+        # Clean up any custom overrides or distributor price lists if present from previous runs
+        CustomerPrice.objects.filter(product=product_200g).delete()
+        PriceList.objects.filter(name="Distributor Tier Price List").delete()
 
         self.stdout.write(
             self.style.SUCCESS("[seed_benchmark] Successfully seeded all benchmark master data.")
